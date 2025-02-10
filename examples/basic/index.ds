@@ -1,0 +1,20 @@
+
+btn = (content, msg): div.button {
+  attr onclick = "alert('${msg}');"
+  content
+}
+
+title = "my cool webpage"
+
+
+html {
+  body {
+    main {
+      h1#title { title }
+      btn("click me!", "hello world!")
+
+      $title
+    }
+  }
+}
+
