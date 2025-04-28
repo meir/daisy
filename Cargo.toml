@@ -3,6 +3,16 @@ name = "daisy"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+doc = false
+name = "daisy"
+
+[build-dependencies]
+cfgrammar = "0.13"
+lrlex = "0.13"
+lrpar = "0.13"
+
 [dependencies]
-strum = "0.26.3"
-strum_macros = "0.26.4"
+cfgrammar = "0.13"
+lrlex = "0.13"
+lrpar = "0.13"
