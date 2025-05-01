@@ -1,51 +1,39 @@
 {
+  description = "Daisy, a static site generator written in Rust";
+
   inputs = {
-    flake-parts = {
-      url = "github:hercules-ci/flake-parts";
-      inputs.nixpkgs-lib.follows = "nixpkgs";
-    };
-    crate2nix.url = "github:nix-community/crate2nix";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
-    inputs@{
+    {
       self,
       nixpkgs,
-      flake-parts,
-      crate2nix,
+      rust-overlay,
+      flake-utils,
       ...
     }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-linux"
-        "aarch64-darwin"
-      ];
-
-      perSystem =
-        {
-          system,
-          pkgs,
-          lib,
-          inputs',
-          ...
-        }:
-        let
-          cargoNix = inputs.crate2nix.tools.${system}.appliedCargoNix {
-            name = "rustnix";
-            src = ./.;
-          };
-        in
-        rec {
-          checks = {
-            rustnix = cargoNix.rootCrate.build.override { runTests = true; };
-          };
-
-          packages = {
-            rustnix = cargoNix.rootCrate.build;
-            default = packages.rustnix;
-          };
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
         };
-    };
+      in
+      {
+        devShells.default =
+          with pkgs;
+          mkShell {
+            buildInputs = [
+              libiconv
+              openssl
+              pkg-config
+              rust-bin.beta.latest.default
+            ];
+          };
+      }
+    );
 }

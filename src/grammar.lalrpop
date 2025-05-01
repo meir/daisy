@@ -1,0 +1,58 @@
+use crate::ast::{
+  Node,
+  AST,
+
+  str::Str,
+  element::Element,
+  attribute::Attribute,
+};
+use std::str::FromStr;
+
+grammar;
+
+pub Term: Box<dyn AST> = {
+  <r:Root> => r,
+};
+
+Root: Box<dyn AST> = {
+  <e:Element> => Box::new(e),
+};
+
+Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+Name: Str = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => Str::new(s.to_string());
+Str: Node = <s:r#""([^"\\]|\\.)*""#> => Node::Str(Str::new(s[1..s.len()-1].to_string()));
+
+Body: Node = {
+  <s:Str> => s,
+  <e:Element> => e,
+};
+
+
+
+Attribute: Node = {
+  <n:Name> "=" <s:Str> => { 
+    match s {
+      Node::Str(s) => Node::Attribute(Attribute::new(n, s)),
+      _ => panic!("Expected a string for attribute value"),
+    }
+  },
+  <n:Name> => Node::Attribute(Attribute::new(n, Str::new("true".to_string()))),
+  "." <n:Name> => Node::Attribute(Attribute::new(Str::new("class".to_string()), n)),
+  "#" <n:Name> => Node::Attribute(Attribute::new(Str::new("id".to_string()), n)),
+}
+
+Element: Node = {
+  <n:Name> <a:Attribute*> "{" <b:Body*> "}" => {
+    let mut element = Element::new(n);
+    element.add_children(b);
+    element.add_attributes(a);
+    Node::Element(element)
+  },
+  <n:Name> <a:Attribute*> ">" <e:Element> => {
+    let mut element = Element::new(n);
+    element.add_children(vec![e]);
+    element.add_attributes(a);
+    Node::Element(element)
+  },
+}
+

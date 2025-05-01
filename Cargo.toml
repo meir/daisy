@@ -8,11 +8,8 @@ doc = false
 name = "daisy"
 
 [build-dependencies]
-cfgrammar = "0.13"
-lrlex = "0.13"
-lrpar = "0.13"
+lalrpop = "0.22.1"
 
-[dependencies]
-cfgrammar = "0.13"
-lrlex = "0.13"
-lrpar = "0.13"
+[dependencies.lalrpop-util]
+version = "0.22.1"
+features = ["lexer", "unicode"]
