@@ -21,7 +21,9 @@ fn main() {
                 parserdef
                     .parse(l.trim())
                     .map(|ast| {
-                        println!("{}", ast.str());
+                        for ast_node in &ast {
+                            println!("{}", ast_node.str());
+                        }
                     })
                     .unwrap_or_else(|err| {
                         eprintln!("Error: {}", err);

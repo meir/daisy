@@ -10,8 +10,8 @@ use std::str::FromStr;
 
 grammar;
 
-pub Term: Box<dyn AST> = {
-  <r:Root> => r,
+pub Term: Vec<Box<dyn AST>> = {
+  <r:Root*> => r,
 };
 
 Root: Box<dyn AST> = {
@@ -27,18 +27,16 @@ Body: Node = {
   <e:Element> => e,
 };
 
-
-
 Attribute: Node = {
   <n:Name> "=" <s:Str> => { 
     match s {
-      Node::Str(s) => Node::Attribute(Attribute::new(n, s)),
+      Node::Str(s) => Node::Attribute(Attribute::new(n, Some(s))),
       _ => panic!("Expected a string for attribute value"),
     }
   },
-  <n:Name> => Node::Attribute(Attribute::new(n, Str::new("true".to_string()))),
-  "." <n:Name> => Node::Attribute(Attribute::new(Str::new("class".to_string()), n)),
-  "#" <n:Name> => Node::Attribute(Attribute::new(Str::new("id".to_string()), n)),
+  <n:Name> => Node::Attribute(Attribute::new(n, None)),
+  "." <n:Name> => Node::Attribute(Attribute::new(Str::new("class".to_string()), Some(n))),
+  "#" <n:Name> => Node::Attribute(Attribute::new(Str::new("id".to_string()), Some(n))),
 }
 
 Element: Node = {

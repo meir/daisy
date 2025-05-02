@@ -4,31 +4,31 @@ use crate::ast::AST;
 #[derive(Debug, Clone)]
 pub struct Attribute {
     pub name: Str,
-    value: Str,
+    value: Option<Str>,
 }
 
 impl Attribute {
-    pub fn new(name: Str, value: Str) -> Self {
+    pub fn new(name: Str, value: Option<Str>) -> Self {
         Attribute { name, value }
     }
 
     pub fn merge(&self, other: &Self) -> Self {
-        if self.name.str() == other.name.str() {
-            Attribute {
-                name: self.name.clone(),
-                value: Str::new(format!("{} {}", self.value.str(), other.value.str())),
+        let name = self.name.clone();
+        if let Some(sv) = &self.value {
+            if let Some(ov) = &other.value {
+                return Attribute::new(name, Some(Str::new(format!("{} {}", sv.str(), ov.str()))));
             }
-        } else {
-            Attribute {
-                name: self.name.clone(),
-                value: self.value.clone(),
-            }
+            return Attribute::new(name, Some(sv.clone()));
         }
+        return Attribute::new(name, None);
     }
 }
 
 impl AST for Attribute {
     fn str(&self) -> String {
-        format!("{}=\"{}\"", self.name.str(), self.value.str())
+        if let Some(value) = &self.value {
+            return format!("{}=\"{}\"", self.name.str(), value.str());
+        }
+        return format!("{}", self.name.str());
     }
 }
