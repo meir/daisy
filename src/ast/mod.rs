@@ -1,10 +1,12 @@
+use crate::context::Context;
+
 pub mod attribute;
 pub mod element;
 pub mod str;
 
 // This trait is object-safe as it only has methods with &self
 pub trait AST {
-    fn str(&self) -> String;
+    fn str(&self, ctx: &Context) -> String;
 }
 
 pub enum Node {
@@ -14,11 +16,11 @@ pub enum Node {
 }
 
 impl AST for Node {
-    fn str(&self) -> String {
+    fn str(&self, ctx: &Context) -> String {
         match self {
-            Node::Element(e) => e.str(),
-            Node::Str(s) => s.str(),
-            Node::Attribute(a) => a.str(),
+            Node::Element(e) => e.str(ctx),
+            Node::Str(s) => s.str(ctx),
+            Node::Attribute(a) => a.str(ctx),
         }
     }
 }

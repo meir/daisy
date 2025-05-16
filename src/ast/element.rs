@@ -1,5 +1,6 @@
 use crate::ast::str::Str;
 use crate::ast::{Node, AST};
+use crate::context::Context;
 
 pub struct Element {
     name: Str,
@@ -22,7 +23,7 @@ impl Element {
                 Node::Attribute(attr) => {
                     for existing_attr in &mut self.attributes {
                         if let Node::Attribute(existing_attr) = existing_attr {
-                            if existing_attr.name.str() == attr.name.str() {
+                            if existing_attr.name.literal == attr.name.literal {
                                 *existing_attr = existing_attr.merge(&attr);
                                 return;
                             }
@@ -42,20 +43,32 @@ impl Element {
 }
 
 impl AST for Element {
-    fn str(&self) -> String {
-        let mut result = format!("<{}", self.name.str());
+    fn str(&self, ctx: &Context) -> String {
+        let mut result = format!("<{}", self.name.literal);
         if self.attributes.len() > 0 {
             result.push_str(" ");
             for attr in &self.attributes {
-                result.push_str(&attr.str());
+                result.push_str(&attr.str(ctx));
             }
         }
         result.push_str(">");
 
-        for node in &self.content {
-            result.push_str(&node.str());
+        if ctx.config.pretty {
+            result.push_str("\n");
+            for node in &self.content {
+                let content = node.str(ctx);
+                let lines = content.lines();
+                for line in lines {
+                    result.push_str(&format!("  {}\n", line));
+                }
+            }
+        } else {
+            for node in &self.content {
+                result.push_str(&node.str(ctx));
+            }
         }
-        result.push_str(&format!("</{}>", self.name.str()));
+
+        result.push_str(&format!("</{}>", self.name.literal));
         result
     }
 }

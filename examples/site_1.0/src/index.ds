@@ -1,0 +1,15 @@
+
+html {
+  head {
+    title > "Example 1.0"
+  }
+
+  body {
+    h1 > "Hello world!"
+    ul {
+      li > "This is a list item"
+      li > "This is another list item"
+      li > "This is a third list item"
+    }
+  }
+}

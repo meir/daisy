@@ -1,5 +1,6 @@
 use crate::ast::str::Str;
 use crate::ast::AST;
+use crate::context::Context;
 
 #[derive(Debug, Clone)]
 pub struct Attribute {
@@ -16,7 +17,10 @@ impl Attribute {
         let name = self.name.clone();
         if let Some(sv) = &self.value {
             if let Some(ov) = &other.value {
-                return Attribute::new(name, Some(Str::new(format!("{} {}", sv.str(), ov.str()))));
+                return Attribute::new(
+                    name,
+                    Some(Str::new(format!("{} {}", sv.literal, ov.literal))),
+                );
             }
             return Attribute::new(name, Some(sv.clone()));
         }
@@ -25,10 +29,10 @@ impl Attribute {
 }
 
 impl AST for Attribute {
-    fn str(&self) -> String {
+    fn str(&self, ctx: &Context) -> String {
         if let Some(value) = &self.value {
-            return format!("{}=\"{}\"", self.name.str(), value.str());
+            return format!("{}=\"{}\"", self.name.str(ctx), value.str(ctx));
         }
-        return format!("{}", self.name.str());
+        return format!("{}", self.name.str(ctx));
     }
 }

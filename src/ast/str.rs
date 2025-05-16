@@ -1,8 +1,10 @@
 use crate::ast::AST;
 
+use crate::context::Context;
+
 #[derive(Debug, Clone)]
 pub struct Str {
-    literal: String,
+    pub literal: String,
 }
 
 impl Str {
@@ -12,7 +14,7 @@ impl Str {
 }
 
 impl AST for Str {
-    fn str(&self) -> String {
+    fn str(&self, _ctx: &Context) -> String {
         self.literal.clone()
     }
 }

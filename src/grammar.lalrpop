@@ -21,9 +21,13 @@ Root: Box<dyn AST> = {
 Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
 Name: Str = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => Str::new(s.to_string());
 Str: Node = <s:r#""([^"\\]|\\.)*""#> => Node::Str(Str::new(s[1..s.len()-1].to_string()));
+MultilineStr: Node = {
+  <s:r#"''([^'\\]|\\.)*''"#> => Node::Str(Str::new(s[2..s.len()-2].to_string())),
+};
 
 Body: Node = {
   <s:Str> => s,
+  <s:MultilineStr> => s,
   <e:Element> => e,
 };
 
@@ -46,7 +50,7 @@ Element: Node = {
     element.add_attributes(a);
     Node::Element(element)
   },
-  <n:Name> <a:Attribute*> ">" <e:Element> => {
+  <n:Name> <a:Attribute*> ">" <e:Body> => {
     let mut element = Element::new(n);
     element.add_children(vec![e]);
     element.add_attributes(a);

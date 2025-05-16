@@ -1,35 +1,18 @@
+use env_logger::Env;
 use lalrpop_util::lalrpop_mod;
-use std::io::{self, BufRead, Write};
+use log::info;
 
 mod ast;
+mod cli;
+mod context;
+mod resolver;
 
 lalrpop_mod!(grammar);
 
 fn main() {
-    // Get the `LexerDef` for the `daisy` language.
-    let parserdef = grammar::TermParser::new();
-    let stdin = io::stdin();
-    loop {
-        print!(">>> ");
-        io::stdout().flush().ok();
-        match stdin.lock().lines().next() {
-            Some(Ok(ref l)) => {
-                if l.trim().is_empty() {
-                    continue;
-                }
+    let env = Env::default().filter_or("DAISY_LOG", "trace");
+    env_logger::init_from_env(env);
+    let ctx = context::load_config();
 
-                parserdef
-                    .parse(l.trim())
-                    .map(|ast| {
-                        for ast_node in &ast {
-                            println!("{}", ast_node.str());
-                        }
-                    })
-                    .unwrap_or_else(|err| {
-                        eprintln!("Error: {}", err);
-                    });
-            }
-            _ => break,
-        }
-    }
+    cli::run(&ctx);
 }

@@ -1,0 +1,4 @@
+
+src = "./examples/site_1.0/src"
+output = "./examples/site_1.0/site"
+pretty = true
