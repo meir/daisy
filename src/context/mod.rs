@@ -11,7 +11,7 @@ pub struct Context {
 #[serde(default)]
 pub struct Config {
     pub src: String,
-    pub out: String,
+    pub output: String,
     pub pretty: bool,
 }
 
@@ -19,7 +19,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             src: "./src".to_string(),
-            out: "./out".to_string(),
+            output: "./out".to_string(),
             pretty: false,
         }
     }
@@ -33,7 +33,12 @@ pub fn load_config() -> Context {
         "".to_string()
     });
 
-    let cfg: Config = toml::from_str(&config_str).unwrap();
+    let mut cfg: Config = toml::from_str(&config_str).unwrap();
+
+    let absolute_src = std::fs::canonicalize(&cfg.src).unwrap_or_else(|_| {
+        panic!("{} not found, using default src", cfg.src);
+    });
+    cfg.src = absolute_src.to_str().unwrap().to_string();
 
     Context {
         parser: TermParser::new(),
