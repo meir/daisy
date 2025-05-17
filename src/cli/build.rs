@@ -4,18 +4,15 @@ use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
 
-pub fn save(ctx: &Context, path: &str, content: &File) {
-    let src = Path::new(path).strip_prefix(ctx.config.src.clone());
+fn get_output_path(ctx: &Context, src: &Path) -> String {
+    let name = src.file_stem().unwrap();
 
-    let mut folder = src.clone().unwrap().parent().unwrap();
-    let name = src.clone().unwrap().file_stem().unwrap();
-
-    let mut output_path: String;
+    let output_path: String;
     if name == "index" {
         output_path = format!(
             "{}/{}/{}",
             ctx.config.output.clone(),
-            src.unwrap().parent().unwrap().to_str().unwrap(),
+            src.parent().unwrap().to_str().unwrap(),
             "index.html"
         );
     } else {
@@ -26,6 +23,17 @@ pub fn save(ctx: &Context, path: &str, content: &File) {
             "index.html",
         );
     };
+
+    std::path::absolute(&output_path)
+        .unwrap_or_else(|_| panic!("Failed to get absolute path: {}", output_path))
+        .to_str()
+        .unwrap()
+        .to_string()
+}
+
+fn save(ctx: &Context, path: &str, content: &File) {
+    let src = Path::new(path).strip_prefix(ctx.config.src.clone());
+    let output_path = get_output_path(ctx, &src.unwrap());
 
     fs::create_dir_all(Path::new(&output_path).parent().unwrap()).unwrap_or_else(|err| {
         panic!("Failed to create directory: {}: {}", path, err);

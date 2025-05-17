@@ -1,6 +1,5 @@
 use env_logger::Env;
 use lalrpop_util::lalrpop_mod;
-use log::info;
 
 mod ast;
 mod cli;
