@@ -1,5 +1,6 @@
 use crate::ast::str::Str;
 use crate::ast::AST;
+use crate::context::environment::Environment;
 use crate::context::Context;
 
 #[derive(Debug, Clone)]
@@ -29,10 +30,14 @@ impl Attribute {
 }
 
 impl AST for Attribute {
-    fn str(&self, ctx: &Context) -> String {
+    fn str(&self, ctx: &Context, scope: &mut Environment) -> String {
         if let Some(value) = &self.value {
-            return format!("{}=\"{}\"", self.name.str(ctx), value.str(ctx));
+            return format!(
+                "{}=\"{}\"",
+                self.name.str(ctx, scope),
+                value.str(ctx, scope)
+            );
         }
-        return format!("{}", self.name.str(ctx));
+        return format!("{}", self.name.str(ctx, scope));
     }
 }

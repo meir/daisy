@@ -1,7 +1,9 @@
 use crate::ast::str::Str;
 use crate::ast::{Node, AST};
+use crate::context::environment::Environment;
 use crate::context::Context;
 
+#[derive(Debug, Clone)]
 pub struct Element {
     name: Str,
     attributes: Vec<Node>,
@@ -43,12 +45,12 @@ impl Element {
 }
 
 impl AST for Element {
-    fn str(&self, ctx: &Context) -> String {
+    fn str(&self, ctx: &Context, scope: &mut Environment) -> String {
         let mut result = format!("<{}", self.name.literal);
         if self.attributes.len() > 0 {
             result.push_str(" ");
             for attr in &self.attributes {
-                result.push_str(&attr.str(ctx));
+                result.push_str(&attr.str(ctx, scope));
             }
         }
         result.push_str(">");
@@ -56,7 +58,7 @@ impl AST for Element {
         if ctx.config.pretty {
             result.push_str("\n");
             for node in &self.content {
-                let content = node.str(ctx);
+                let content = node.str(ctx, scope);
                 let lines = content.lines();
                 for line in lines {
                     result.push_str(&format!("  {}\n", line));
@@ -64,7 +66,7 @@ impl AST for Element {
             }
         } else {
             for node in &self.content {
-                result.push_str(&node.str(ctx));
+                result.push_str(&node.str(ctx, scope));
             }
         }
 

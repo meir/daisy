@@ -1,3 +1,4 @@
+use crate::context::environment::Environment;
 use crate::context::Context;
 use crate::resolver::File;
 use std::fs;
@@ -40,8 +41,9 @@ fn save(ctx: &Context, path: &str, content: &File) {
     });
 
     let mut output_content = String::new();
+    let mut scope = Environment::new(None);
     for ast in &content.ast {
-        output_content.push_str(&ast.str(ctx));
+        output_content.push_str(&ast.str(ctx, &mut scope));
     }
 
     std::fs::write(&output_path, output_content.clone()).unwrap_or_else(|err| {

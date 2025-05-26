@@ -1,4 +1,5 @@
 use crate::ast::AST;
+use crate::context::environment::Environment;
 
 use crate::context::Context;
 
@@ -14,7 +15,7 @@ impl Str {
 }
 
 impl AST for Str {
-    fn str(&self, _ctx: &Context) -> String {
+    fn str(&self, _ctx: &Context, scope: &mut Environment) -> String {
         self.literal.clone()
     }
 }

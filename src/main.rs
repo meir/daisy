@@ -11,7 +11,7 @@ lalrpop_mod!(grammar);
 fn main() {
     let env = Env::default().filter_or("DAISY_LOG", "trace");
     env_logger::init_from_env(env);
-    let ctx = context::load_config();
+    let ctx = context::Context::load_config();
 
     cli::run(&ctx);
 }
