@@ -1,7 +1,8 @@
 use std::str::FromStr;
 use crate::ast::Node;
-use crate::ast::environment::{Type, Value, Variable};
+use crate::ast::environment::{Type, Value};
 use crate::ast::html::Element;
+use crate::ast::statement::Statement;
 
 grammar;
 
@@ -24,12 +25,15 @@ Bool: bool = {
   "false" => false,
 };
 
+// code related rules
+
 Type: Type = {
   "str" => Type::Str,
   "num" => Type::Num,
   "float" => Type::Float,
   "bool" => Type::Bool,
   "element" => Type::Element,
+  "func" => Type::Function,
 }
 
 Value: Value = {
@@ -40,9 +44,20 @@ Value: Value = {
   <e:Element> => Value::Element(Box::new(e)),
 }
 
-Definition: Node = {
-  <t:Type> <n:Name> "=" <v:Value> => Node::Definition(n, Variable::new(t, v)),
+Statement: Statement = {
+  <v:Value> => Statement::Value(v),
+  <c:Call> => c,
 }
+
+Definition: Node = {
+  <t:Type> <n:Name> "=" <s:Statement> => Node::Definition(t, n, s),
+}
+
+Call: Statement = {
+  <n:Name> "(" <args:Value*> ")" => Statement::Call(n, args),
+}
+
+// html related rules
 
 Insertion: Node = {
   "@" <n:Name> => Node::Insertion(n),
@@ -64,3 +79,4 @@ Body: Node = {
   <s:Str> => Node::Text(s),
   <i:Insertion> => i,
 }
+

@@ -10,6 +10,7 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     Element(Box<Node>),
+    Function(fn(&Vec<Value>, &mut Scope) -> Value),
     Nil,
 }
 
@@ -21,8 +22,28 @@ impl Value {
             Value::Float(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Element(node) => node.render(file),
+            Value::Function(function) => todo!(),
             Value::Nil => "nil".to_string(),
         }
+    }
+
+    pub fn get_type(&self) -> Type {
+        match &self {
+            Value::Str(_) => Type::Str,
+            Value::Num(_) => Type::Num,
+            Value::Float(_) => Type::Float,
+            Value::Bool(_) => Type::Bool,
+            Value::Element(_) => Type::Element,
+            Value::Function(_) => Type::Function,
+            Value::Nil => Type::Nil,
+        }
+    }
+
+    pub fn set_value(&mut self, value: Value) {
+        if !Type::matches(&self.get_type(), &value) {
+            panic!("Type mismatch: expected {}, got {}", self.get_type(), value);
+        }
+        self.clone_from(&value);
     }
 }
 
@@ -34,6 +55,7 @@ impl Display for Value {
             Value::Float(n) => write!(f, "float({})", n),
             Value::Bool(b) => write!(f, "bool({})", b),
             Value::Element(_) => write!(f, "element()"),
+            Value::Function(_) => write!(f, "function()"),
             Value::Nil => write!(f, "nil"),
         }
     }
@@ -46,6 +68,7 @@ pub enum Type {
     Float,
     Bool,
     Element,
+    Function,
     Nil,
 }
 
@@ -57,7 +80,8 @@ impl Type {
             (Type::Float, Value::Float(_)) => true,
             (Type::Bool, Value::Bool(_)) => true,
             (Type::Element, Value::Element(_)) => true,
-            (Type::Nil, _) => true,
+            (Type::Function, Value::Function(_)) => true,
+            (_, Value::Nil) => true,
             _ => false,
         }
     }
@@ -71,53 +95,15 @@ impl Display for Type {
             Type::Float => write!(f, "Float"),
             Type::Bool => write!(f, "Boolean"),
             Type::Element => write!(f, "Element"),
+            Type::Function => write!(f, "Function"),
             Type::Nil => write!(f, "Nil"),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct Variable {
-    type_: Type,
-    value: Value,
-}
-
-impl Variable {
-    pub fn new(type_: Type, value: Value) -> Self {
-        if !Type::matches(&type_, &value) {
-            panic!("Type mismatch: expected {}, got {}", type_, value);
-        }
-        Variable { type_, value }
-    }
-
-    pub fn get_type(&self) -> &Type {
-        &self.type_
-    }
-
-    pub fn get_value(&self) -> &Value {
-        &self.value
-    }
-
-    pub fn set_value(&mut self, value: Value) {
-        if !Type::matches(&self.type_, &value) {
-            panic!("Type mismatch: expected {}, got {}", self.type_, value);
-        }
-        self.value = value;
-    }
-
-    pub fn render(&self, file: &mut File) -> String {
-        self.value.render(file)
-    }
-}
-
-impl Display for Variable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.type_, self.value)
-    }
-}
-
 pub struct Scope {
-    variables: HashMap<String, Variable>,
+    variables: HashMap<String, Value>,
     parent: Option<Box<Scope>>,
 }
 
@@ -129,21 +115,32 @@ impl Scope {
                 parent: Some(Box::new(parent)),
             }
         } else {
-            Self {
+            let mut scope = Self {
                 variables: HashMap::new(),
                 parent: None,
-            }
+            };
+
+            scope.define(
+                Type::Function,
+                "hello_world".to_string(),
+                Value::Function(|_args, scope| Value::Str("Hello, World!".to_string())),
+            );
+
+            scope
         }
     }
 
-    pub fn define(&mut self, name: String, variable: Variable) {
+    pub fn define(&mut self, type_: Type, name: String, value: Value) {
         if self.variables.contains_key(&name) {
-            panic!("Variable {} already defined in this scope", name);
+            panic!("Value {} already defined in this scope", name);
         }
-        self.variables.insert(name, variable);
+        if !Type::matches(&type_, &value) {
+            panic!("Type mismatch: expected {}, got {}", type_, value);
+        }
+        self.variables.insert(name, value);
     }
 
-    pub fn get(&self, name: &str) -> Option<&Variable> {
+    pub fn get(&self, name: &str) -> Option<&Value> {
         if let Some(var) = self.variables.get(name) {
             return Some(var);
         }
@@ -159,7 +156,7 @@ impl Scope {
         } else if let Some(parent) = &mut self.parent {
             parent.set(name, value);
         } else {
-            panic!("Variable {} not found in any scope", name);
+            panic!("Value {} not found in any scope", name);
         }
     }
 }

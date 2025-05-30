@@ -1,5 +1,7 @@
 
+str title = hello_world()
+
 html {
-  head > title > "Hello world"
+  head > title > @title
   body > h1#title.red.center > "Hello world"
 }

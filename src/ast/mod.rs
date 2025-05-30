@@ -1,17 +1,22 @@
-use environment::Variable;
+use environment::{Type, Value};
 use html::Element;
+use statement::Statement;
 
 use crate::resolver::File;
 
 pub mod environment;
+pub mod functions;
 pub mod html;
+pub mod statement;
 
 #[derive(Clone)]
 pub enum Node {
     Element(Element),
     Text(String),
-    Definition(String, Variable),
+    Definition(Type, String, Statement),
+    Value(Value),
     Insertion(String),
+    Function(Box<Node>),
 }
 
 impl Node {
@@ -19,8 +24,9 @@ impl Node {
         match self {
             Node::Element(element) => element.render(file),
             Node::Text(text) => text.clone(),
-            Node::Definition(name, variable) => {
-                file.environment.define(name.clone(), variable.clone());
+            Node::Definition(type_, name, statement) => {
+                let value = statement.to_value(file);
+                file.environment.define(type_.clone(), name.clone(), value);
                 "".to_string()
             }
             Node::Insertion(name) => {
@@ -28,9 +34,11 @@ impl Node {
                 if let Some(value) = value {
                     value.render(file)
                 } else {
-                    panic!("Variable '{}' not defined", name);
+                    panic!("Value '{}' not defined", name);
                 }
             }
+            Node::Function(_node) => todo!(),
+            _ => todo!(),
         }
     }
 }
