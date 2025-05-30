@@ -1,4 +1,5 @@
-use crate::ast::AST;
+use crate::ast::environment::Scope;
+use crate::ast::Node;
 use crate::context::Context;
 use std::{
     fs,
@@ -8,8 +9,9 @@ use std::{
 pub struct File {
     src: PathBuf,
     content: String,
+    pub environment: Scope,
 
-    pub ast: Vec<Box<dyn AST>>,
+    pub ast: Vec<Node>,
 }
 
 impl File {
@@ -29,6 +31,7 @@ impl File {
         File {
             src: src.as_ref().to_path_buf(),
             content,
+            environment: Scope::new(None),
             ast,
         }
     }

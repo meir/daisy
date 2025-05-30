@@ -1,38 +1,36 @@
-use crate::context::environment::Environment;
-use crate::context::Context;
+use environment::Variable;
+use html::Element;
 
-pub mod attribute;
-pub mod element;
-pub mod insert;
-pub mod statement;
-pub mod str;
-pub mod variable;
+use crate::resolver::File;
 
-// This trait is object-safe as it only has methods with &self
-pub trait AST {
-    fn str(&self, ctx: &Context, scope: &mut Environment) -> String;
-}
+pub mod environment;
+pub mod html;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Node {
-    Element(element::Element),
-    Str(str::Str),
-    Attribute(attribute::Attribute),
-    Definition(variable::Definition),
-    Insert(insert::Insert),
-    Statement(statement::Statement),
+    Element(Element),
+    Text(String),
+    Definition(String, Variable),
+    Insertion(String),
 }
 
-impl AST for Node {
-    fn str(&self, ctx: &Context, scope: &mut Environment) -> String {
+impl Node {
+    pub fn render(&self, file: &mut File) -> String {
         match self {
-            Node::Element(e) => e.str(ctx, scope),
-            Node::Str(s) => s.str(ctx, scope),
-            Node::Attribute(a) => a.str(ctx, scope),
-            Node::Definition(d) => d.str(ctx, scope),
-            Node::Insert(i) => i.str(ctx, scope),
-            Node::Statement(s) => s.str(ctx, scope),
-            Node::Variable(v) => v.str(ctx, scope),
+            Node::Element(element) => element.render(file),
+            Node::Text(text) => text.clone(),
+            Node::Definition(name, variable) => {
+                file.environment.define(name.clone(), variable.clone());
+                "".to_string()
+            }
+            Node::Insertion(name) => {
+                let value = file.environment.get(name).cloned();
+                if let Some(value) = value {
+                    value.render(file)
+                } else {
+                    panic!("Variable '{}' not defined", name);
+                }
+            }
         }
     }
 }

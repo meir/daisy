@@ -2,9 +2,6 @@ use crate::grammar::TermParser;
 use log::warn;
 use serde::Deserialize;
 
-pub mod environment;
-pub mod variable;
-
 pub struct Context {
     pub parser: TermParser,
     pub config: Config,

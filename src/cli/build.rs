@@ -1,4 +1,3 @@
-use crate::context::environment::Environment;
 use crate::context::Context;
 use crate::resolver::File;
 use std::fs;
@@ -32,7 +31,7 @@ fn get_output_path(ctx: &Context, src: &Path) -> String {
         .to_string()
 }
 
-fn save(ctx: &Context, path: &str, content: &File) {
+fn save(ctx: &Context, path: &str, file: &mut File) {
     let src = Path::new(path).strip_prefix(ctx.config.src.clone());
     let output_path = get_output_path(ctx, &src.unwrap());
 
@@ -40,13 +39,12 @@ fn save(ctx: &Context, path: &str, content: &File) {
         panic!("Failed to create directory: {}: {}", path, err);
     });
 
-    let mut output_content = String::new();
-    let mut scope = Environment::new(None);
-    for ast in &content.ast {
-        output_content.push_str(&ast.str(ctx, &mut scope));
-    }
+    let mut content = String::new();
+    let ast = file.ast.clone();
+    let render: Vec<String> = ast.iter().map(|node| node.render(file)).collect();
+    content.push_str(&render.join(""));
 
-    std::fs::write(&output_path, output_content.clone()).unwrap_or_else(|err| {
+    std::fs::write(&output_path, content.clone()).unwrap_or_else(|err| {
         panic!("Failed to write file: {}: {}", path, err);
     });
 
@@ -62,7 +60,7 @@ pub fn build(ctx: &Context) {
         })
         .for_each(|entry| {
             let path = entry.path();
-            let file = File::load_absolute(ctx, path.to_str().unwrap());
-            save(ctx, path.to_str().unwrap(), &file);
+            let mut file = File::load_absolute(ctx, path.to_str().unwrap());
+            save(ctx, path.to_str().unwrap(), &mut file);
         });
 }

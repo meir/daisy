@@ -1,114 +1,66 @@
-use crate::ast::{
-  Node,
-  AST,
-
-  str::Str,
-  element::Element,
-  attribute::Attribute,
-  variable::Definition,
-  insert::Insert,
-  statement::{Statement, Operator},
-};
-use crate::context::variable::{Variable, Type};
-
 use std::str::FromStr;
+use crate::ast::Node;
+use crate::ast::environment::{Type, Value, Variable};
+use crate::ast::html::Element;
 
 grammar;
 
-pub Term: Vec<Box<dyn AST>> = {
-  <r:Root*> => r,
+pub Term: Vec<Node> = {
+  <r:Root*> => r
 };
 
-Root: Box<dyn AST> = {
-  <e:Element> => Box::new(e),
-  <v:Definition> => Box::new(v),
-};
+Root: Node = {
+  <d:Definition> => d,
+  <e:Element> => e,
+}
 
-Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+Name: String = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => s.to_string();
+
+Str: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
+Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
 Float: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
-Name: Str = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => Str::new(s.to_string());
-Str: Str = <s:r#""([^"\\]|\\.)*""#> => Str::new(s[1..s.len()-1].to_string());
 Bool: bool = {
   "true" => true,
   "false" => false,
 };
-MultilineStr: Node = {
-  <s:r#"''([^'\\]|\\.)*''"#> => Node::Str(Str::new(s[2..s.len()-2].to_string())),
-};
 
-Body: Node = {
-  <s:Str> => Node::Str(s),
-  <s:MultilineStr> => s,
-  <e:Element> => e,
-  <i:Insertion> => i,
-};
-
-Attribute: Node = {
-  <n:Name> "=" <s:Str> => Node::Attribute(Attribute::new(n, Some(s))),
-  <n:Name> => Node::Attribute(Attribute::new(n, None)),
-  "." <n:Name> => Node::Attribute(Attribute::new(Str::new("class".to_string()), Some(n))),
-  "#" <n:Name> => Node::Attribute(Attribute::new(Str::new("id".to_string()), Some(n))),
+Type: Type = {
+  "str" => Type::Str,
+  "num" => Type::Num,
+  "float" => Type::Float,
+  "bool" => Type::Bool,
+  "element" => Type::Element,
 }
 
-Element: Node = {
-  <n:Name> <a:Attribute*> "{" <b:Body*> "}" => {
-    let mut element = Element::new(n);
-    element.add_children(b);
-    element.add_attributes(a);
-    Node::Element(element)
-  },
-  <n:Name> <a:Attribute*> ">" <e:Body> => {
-    let mut element = Element::new(n);
-    element.add_children(vec![e]);
-    element.add_attributes(a);
-    Node::Element(element)
-  },
+Value: Value = {
+  <s:Str> => Value::Str(s),
+  <n:Num> => Value::Num(n),
+  <f:Float> => Value::Float(f),
+  <b:Bool> => Value::Bool(b),
+  <e:Element> => Value::Element(Box::new(e)),
 }
-
-// variables
 
 Definition: Node = {
-  "str" <n:Name> "=" <s:Str> => Node::Definition(Definition::new(n, Variable::String(s.literal))),
-  "element" <n:Name> "=" <e:Element> => Node::Definition(Definition::new(n, Variable::Element(e))),
-  "num" <n:Name> "=" <num:Num> => Node::Definition(Definition::new(n, Variable::Number(num.into()))),
-  "float" <n:Name> "=" <f:Float> => Node::Definition(Definition::new(n, Variable::Float(f))),
-  "bool" <n:Name> "=" <b:Bool> => Node::Definition(Definition::new(n, Variable::Boolean(b))),
+  <t:Type> <n:Name> "=" <v:Value> => Node::Definition(n, Variable::new(t, v)),
 }
 
 Insertion: Node = {
-  "@" <n:Name> => {
-    Node::Insert(Insert::new(n.literal))
-  }
+  "@" <n:Name> => Node::Insertion(n),
 }
 
-VariableType: Type = {
-  "str" => Type::String,
-  "num" => Type::Number,
-  "float" => Type::Float,
-  "bool" => Type::Boolean,
-  "element" => Type::Element,
-  <t:VariableType> "[]" => Type::Array(Box::new(t)),
-  <t:VariableType> "[" <k:VariableType> "]" => Type::Map(Box::new(t), Box::new(k)),
+Element: Node = {
+  <n:Name> <a:Attribute*> "{" <b:Body*> "}" => Node::Element(Element::new(n, a, b)),
+  <n:Name> <a:Attribute*> ">" <b:Body> => Node::Element(Element::new(n, a, vec![b])),
 }
 
-Variable: Variable = {
-  <s:Str> => Variable::String(s.literal),
-  <n:Num> => Variable::Number(n.into()),
-  <f:Float> => Variable::Float(f),
-  <b:Bool> => Variable::Boolean(b),
-  <e:Element> => Variable::Element(e),
+Attribute: (String, Vec<Node>) = {
+  "#" <n:Name> => ("id".to_string(), vec![Node::Text(n)]),
+  "." <n:Name> => ("class".to_string(), vec![Node::Text(n)]),
+  <n:Name> "=" <s:Str> => (n, vec![Node::Text(s)]),
 }
 
-Statement: Node = {
-  <v1:Variable> "+" <v2:Variable> => Node::Statement(Statement::new(Operator::Plus, v1, v2)),
-  <v1:Variable> "-" <v2:Variable> => Node::Statement(Statement::new(Operator::Minus, v1, v2)),
-  <v1:Variable> "*" <v2:Variable> => Node::Statement(Statement::new(Operator::Multiply, v1, v2)),
-  <v1:Variable> "/" <v2:Variable> => Node::Statement(Statement::new(Operator::Divide, v1, v2)),
+Body: Node = {
+  <e:Element> => e,
+  <s:Str> => Node::Text(s),
+  <i:Insertion> => i,
 }
-
-VariableDefinition: Node = {
-  <t:VariableType> <n:Name> "=" <v:Variable> => {
-    Node::Definition(Definition::new(n, v.with_type(t)))
-  },
-}
-
