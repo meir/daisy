@@ -1,3 +1,4 @@
+use crate::ast::statement::Statement;
 use crate::ast::Node;
 use crate::resolver::File;
 use std::collections::HashMap;
@@ -10,7 +11,12 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     Element(Box<Node>),
-    Function(fn(&Vec<Value>, &mut Scope) -> Value),
+    Function(
+        fn(&Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        Vec<Node>,
+        Type,
+        Vec<Statement>,
+    ),
     Nil,
 }
 
@@ -22,7 +28,7 @@ impl Value {
             Value::Float(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Element(node) => node.render(file),
-            Value::Function(function) => todo!(),
+            Value::Function(function, ..) => todo!(),
             Value::Nil => "nil".to_string(),
         }
     }
@@ -34,7 +40,7 @@ impl Value {
             Value::Float(_) => Type::Float,
             Value::Bool(_) => Type::Bool,
             Value::Element(_) => Type::Element,
-            Value::Function(_) => Type::Function,
+            Value::Function(..) => Type::Function,
             Value::Nil => Type::Nil,
         }
     }
@@ -55,7 +61,7 @@ impl Display for Value {
             Value::Float(n) => write!(f, "float({})", n),
             Value::Bool(b) => write!(f, "bool({})", b),
             Value::Element(_) => write!(f, "element()"),
-            Value::Function(_) => write!(f, "function()"),
+            Value::Function(..) => write!(f, "function()"),
             Value::Nil => write!(f, "nil"),
         }
     }
@@ -80,7 +86,7 @@ impl Type {
             (Type::Float, Value::Float(_)) => true,
             (Type::Bool, Value::Bool(_)) => true,
             (Type::Element, Value::Element(_)) => true,
-            (Type::Function, Value::Function(_)) => true,
+            (Type::Function, Value::Function(..)) => true,
             (_, Value::Nil) => true,
             _ => false,
         }
@@ -123,7 +129,12 @@ impl Scope {
             scope.define(
                 Type::Function,
                 "hello_world".to_string(),
-                Value::Function(|_args, scope| Value::Str("Hello, World!".to_string())),
+                Value::Function(
+                    |_body, _args, scope| Value::Str("Hello, World!".to_string()),
+                    vec![],
+                    Type::Str,
+                    vec![],
+                ),
             );
 
             scope

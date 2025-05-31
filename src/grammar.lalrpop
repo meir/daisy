@@ -42,15 +42,32 @@ Value: Value = {
   <f:Float> => Value::Float(f),
   <b:Bool> => Value::Bool(b),
   <e:Element> => Value::Element(Box::new(e)),
+  <f:Function> => f,
 }
 
 Statement: Statement = {
   <v:Value> => Statement::Value(v),
   <c:Call> => c,
+  "return" <s:Statement> => Statement::Return(Box::new(s)),
 }
 
 Definition: Node = {
   <t:Type> <n:Name> "=" <s:Statement> => Node::Definition(t, n, s),
+  <t:Type> <n:Name> => Node::Definition(t, n, Statement::Nil),
+}
+
+FunctionParameters: Vec<Node> = {
+  <args:(<Definition> ",")*> <f:Definition> => {
+    let mut params = args;
+    params.push(f);
+    params
+  },
+}
+
+Function: Value = {
+  "(" <args:FunctionParameters> ")" <return_type:Type> "{" <body:Statement*> "}" => {
+    Value::Function(|_, _, _|{Value::Nil}, args, return_type, body)
+  },
 }
 
 Call: Statement = {
@@ -64,8 +81,8 @@ Insertion: Node = {
 }
 
 Element: Node = {
-  <n:Name> <a:Attribute*> "{" <b:Body*> "}" => Node::Element(Element::new(n, a, b)),
-  <n:Name> <a:Attribute*> ">" <b:Body> => Node::Element(Element::new(n, a, vec![b])),
+  <n:Name> <a:Attribute*> "{" <b:ElementBody*> "}" => Node::Element(Element::new(n, a, b)),
+  <n:Name> <a:Attribute*> ">" <b:ElementBody> => Node::Element(Element::new(n, a, vec![b])),
 }
 
 Attribute: (String, Vec<Node>) = {
@@ -74,7 +91,7 @@ Attribute: (String, Vec<Node>) = {
   <n:Name> "=" <s:Str> => (n, vec![Node::Text(s)]),
 }
 
-Body: Node = {
+ElementBody: Node = {
   <e:Element> => e,
   <s:Str> => Node::Text(s),
   <i:Insertion> => i,

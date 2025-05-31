@@ -9,6 +9,8 @@ use super::environment::Scope;
 pub enum Statement {
     Value(Value),
     Call(String, Vec<Value>),
+    Return(Box<Statement>),
+    Nil,
 }
 
 impl Statement {
@@ -20,10 +22,22 @@ impl Statement {
                 if let Some(value) = value {
                     if Type::matches(&Type::Function, &value) {
                         match value {
-                            Value::Function(func) => {
+                            Value::Function(func, params, return_type, body) => {
                                 let mut scope = Scope::new(Some(file.environment.clone()));
-                                let return_value = func(&args, &mut scope);
-                                return return_value;
+                                for param in params {
+                                    param.render(file);
+                                }
+                                let return_value = func(&body, &args, &mut scope);
+
+                                if Type::matches(&return_type, &return_value) {
+                                    return_value
+                                } else {
+                                    panic!(
+                                        "Type mismatch: expected {}, got {}",
+                                        return_type,
+                                        return_value.get_type()
+                                    );
+                                }
                             }
                             _ => Value::Nil,
                         }
@@ -34,6 +48,9 @@ impl Statement {
                     panic!("Function '{}' not defined", name);
                 }
             }
+            Statement::Return(inner) => inner.to_value(file), //Figure out how to differentiate
+            //later
+            Statement::Nil => Value::Nil,
         }
     }
 }
