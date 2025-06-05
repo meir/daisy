@@ -1,7 +1,7 @@
 
 str title = "Website 1.0"
 
-element ul = ul {
+element ul = :ul {
   li#first-item > "This is a list item"
   li > "This is another list item"
   li > "This is a third list item"
@@ -9,11 +9,11 @@ element ul = ul {
 
 html {
   head {
-    title > @title 
+    title > @{title}
   }
 
   body {
     h1 > "Hello world!"
-    @ul
+    @{ul}
   }
 }

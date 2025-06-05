@@ -1,14 +1,15 @@
 
 str title = hello_world()
-func header = (str input) element {
-  return h1#title.red.center {
-    @input
+
+func header = (str input) str {
+  return : h1#title.red.center {
+    @{input}
   }
 }
 
-element head = header("Hello world")
+str head = header("Hello world") + "!"
 
 html {
-  head > title > @title
-  body > @head
+  head > title > @{title}
+  body > @{head}
 }

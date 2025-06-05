@@ -1,56 +1,39 @@
-use crate::{
-    ast::environment::{Type, Value},
-    resolver::File,
+use super::{
+    environment::{Scope, Type},
+    expression::Expression,
+    function::call_function,
 };
-
-use super::environment::Scope;
+use crate::ast::environment::Value;
 
 #[derive(Clone)]
 pub enum Statement {
-    Value(Value),
     Call(String, Vec<Value>),
-    Return(Box<Statement>),
-    Nil,
+    Definition(Type, String, Expression),
+    Assignment(String, Expression),
+    Return(Expression),
 }
 
 impl Statement {
-    pub fn to_value(&self, file: &mut File) -> Value {
+    pub fn process(&self, scope: &mut Scope) {
         match self {
-            Statement::Value(value) => value.clone(),
             Statement::Call(name, args) => {
-                let value = file.environment.get(name).cloned();
-                if let Some(value) = value {
-                    if Type::matches(&Type::Function, &value) {
-                        match value {
-                            Value::Function(func, params, return_type, body) => {
-                                let mut scope = Scope::new(Some(file.environment.clone()));
-                                for param in params {
-                                    param.render(file);
-                                }
-                                let return_value = func(&body, &args, &mut scope);
-
-                                if Type::matches(&return_type, &return_value) {
-                                    return_value
-                                } else {
-                                    panic!(
-                                        "Type mismatch: expected {}, got {}",
-                                        return_type,
-                                        return_value.get_type()
-                                    );
-                                }
-                            }
-                            _ => Value::Nil,
-                        }
-                    } else {
-                        panic!("Expected a function, got {}", value.get_type());
-                    }
-                } else {
-                    panic!("Function '{}' not defined", name);
-                }
+                let value = scope
+                    .get(name)
+                    .cloned()
+                    .unwrap_or_else(|| panic!("Function '{}' not defined", name));
+                call_function(&value, args, scope);
             }
-            Statement::Return(inner) => inner.to_value(file), //Figure out how to differentiate
-            //later
-            Statement::Nil => Value::Nil,
+            Statement::Definition(type_, name, expression) => {
+                let value = expression.to_value(scope);
+                scope.define(type_.clone(), name.clone(), value);
+            }
+            Statement::Assignment(name, expression) => {
+                let value = expression.to_value(scope);
+                scope.set(name.clone(), value);
+            }
+            Statement::Return(expression) => {
+                let _value = expression.to_value(scope);
+            }
         }
     }
 }

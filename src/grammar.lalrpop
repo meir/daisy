@@ -2,30 +2,24 @@ use std::str::FromStr;
 use crate::ast::Node;
 use crate::ast::environment::{Type, Value};
 use crate::ast::html::Element;
+use crate::ast::expression::Expression;
+use crate::ast::function::default_function;
 use crate::ast::statement::Statement;
 
 grammar;
 
-pub Term: Vec<Node> = {
-  <r:Root*> => r
+pub Daisy: Vec<Node> = {
+  <Root*>
 };
 
 Root: Node = {
-  <d:Definition> => d,
-  <e:Element> => e,
+  <c:Statement> => Node::Statement(c),
+  Element,
 }
 
-Name: String = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => s.to_string();
+// Types / Identifiers
 
-Str: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
-Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
-Float: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
-Bool: bool = {
-  "true" => true,
-  "false" => false,
-};
-
-// code related rules
+Identifier: String = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => s.to_string();
 
 Type: Type = {
   "str" => Type::Str,
@@ -36,27 +30,57 @@ Type: Type = {
   "func" => Type::Function,
 }
 
+Str: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
+Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
+Float: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
+Bool: bool = {
+  "true" => true,
+  "false" => false,
+};
+
+// Expressions
+
+Expression: Expression = {
+  <l:Expression> "+" <r:Factor> => Expression::Addition(Box::new(l), Box::new(r)),
+  <l:Expression> "-" <r:Factor> => Expression::Subtraction(Box::new(l), Box::new(r)),
+  Factor,
+};
+
+Factor: Expression = {
+  <l:Factor> "*" <r:Term> => Expression::Multiplication(Box::new(l), Box::new(r)),
+  <l:Factor> "/" <r:Term> => Expression::Division(Box::new(l), Box::new(r)),
+  Term,
+};
+
+Term: Expression = {
+  "(" <Expression> ")",
+  <v:Value> => Expression::Value(v),
+  <id:Identifier> => Expression::Identifier(id),
+  ExpressionCall,
+};
+
 Value: Value = {
   <s:Str> => Value::Str(s),
   <n:Num> => Value::Num(n),
   <f:Float> => Value::Float(f),
   <b:Bool> => Value::Bool(b),
-  <e:Element> => Value::Element(Box::new(e)),
-  <f:Function> => f,
+  ":" <e:Element> => Value::Element(e.into()),
+  Function,
 }
 
-Statement: Statement = {
-  <v:Value> => Statement::Value(v),
-  <c:Call> => c,
-  "return" <s:Statement> => Statement::Return(Box::new(s)),
+ExpressionCall: Expression = {
+  <n:Identifier> "(" <args:(<Value> ",")*> <arg:Value?> ")" => {
+    let mut args = args;
+    if let Some(a) = arg {
+      args.push(a);
+    }
+    Expression::Call(n, args)
+  },
 }
 
-Definition: Node = {
-  <t:Type> <n:Name> "=" <s:Statement> => Node::Definition(t, n, s),
-  <t:Type> <n:Name> => Node::Definition(t, n, Statement::Nil),
-}
+// Function Expression
 
-FunctionParameters: Vec<Node> = {
+FunctionParameters: Vec<Statement> = {
   <args:(<Definition> ",")*> <f:Definition> => {
     let mut params = args;
     params.push(f);
@@ -66,34 +90,54 @@ FunctionParameters: Vec<Node> = {
 
 Function: Value = {
   "(" <args:FunctionParameters> ")" <return_type:Type> "{" <body:Statement*> "}" => {
-    Value::Function(|_, _, _|{Value::Nil}, args, return_type, body)
+    Value::Function(default_function, args, return_type, body)
   },
 }
 
-Call: Statement = {
-  <n:Name> "(" <args:Value*> ")" => Statement::Call(n, args),
+// Statements
+
+Statement: Statement = {
+  Definition,
+  Assignment,
+  Return,
+  StatementCall,
+}
+
+Definition: Statement = {
+  <t:Type> <id:Identifier> "=" <s:Expression> => Statement::Definition(t, id, s),
+  <t:Type> <id:Identifier> => Statement::Definition(t, id, Expression::Nil),
+}
+
+Assignment: Statement = {
+  <id:Identifier> "=" <s:Expression> => Statement::Assignment(id, s),
+}
+
+Return: Statement = "return" <s:Expression> => Statement::Return(s.into());
+
+StatementCall: Statement = {
+  <id:Identifier> "(" <args:Value*> ")" => Statement::Call(id, args),
 }
 
 // html related rules
 
 Insertion: Node = {
-  "@" <n:Name> => Node::Insertion(n),
+  "@" "{" <e:Expression> "}" => Node::Insertion(e),
 }
 
 Element: Node = {
-  <n:Name> <a:Attribute*> "{" <b:ElementBody*> "}" => Node::Element(Element::new(n, a, b)),
-  <n:Name> <a:Attribute*> ">" <b:ElementBody> => Node::Element(Element::new(n, a, vec![b])),
+  <id:Identifier> <attrs:Attribute*> "{" <body:ElementBody*> "}" => Node::Element(Element::new(id, attrs, body)),
+  <id:Identifier> <attrs:Attribute*> ">" <body:ElementBody> => Node::Element(Element::new(id, attrs, vec![body])),
 }
 
 Attribute: (String, Vec<Node>) = {
-  "#" <n:Name> => ("id".to_string(), vec![Node::Text(n)]),
-  "." <n:Name> => ("class".to_string(), vec![Node::Text(n)]),
-  <n:Name> "=" <s:Str> => (n, vec![Node::Text(s)]),
+  "#" <id:Identifier> => ("id".to_string(), vec![Node::Text(id)]),
+  "." <id:Identifier> => ("class".to_string(), vec![Node::Text(id)]),
+  <id:Identifier> "=" <s:Str> => (id, vec![Node::Text(s)]),
 }
 
 ElementBody: Node = {
-  <e:Element> => e,
+  Insertion,
+  Element,
   <s:Str> => Node::Text(s),
-  <i:Insertion> => i,
 }
 

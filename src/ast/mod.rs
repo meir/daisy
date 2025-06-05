@@ -1,11 +1,11 @@
-use environment::{Type, Value};
+use environment::Scope;
+use expression::Expression;
 use html::Element;
 use statement::Statement;
 
-use crate::resolver::File;
-
 pub mod environment;
-pub mod functions;
+pub mod expression;
+pub mod function;
 pub mod html;
 pub mod statement;
 
@@ -13,32 +13,20 @@ pub mod statement;
 pub enum Node {
     Element(Element),
     Text(String),
-    Definition(Type, String, Statement),
-    Value(Value),
-    Insertion(String),
-    Function(Box<Node>),
+    Insertion(Expression),
+    Statement(Statement),
 }
 
 impl Node {
-    pub fn render(&self, file: &mut File) -> String {
+    pub fn render(&self, scope: &mut Scope) -> String {
         match self {
-            Node::Element(element) => element.render(file),
+            Node::Element(element) => element.render(scope),
             Node::Text(text) => text.clone(),
-            Node::Definition(type_, name, statement) => {
-                let value = statement.to_value(file);
-                file.environment.define(type_.clone(), name.clone(), value);
+            Node::Statement(stmt) => {
+                stmt.process(scope);
                 "".to_string()
             }
-            Node::Insertion(name) => {
-                let value = file.environment.get(name).cloned();
-                if let Some(value) = value {
-                    value.render(file)
-                } else {
-                    panic!("Value '{}' not defined", name);
-                }
-            }
-            Node::Function(_node) => todo!(),
-            _ => todo!(),
+            Node::Insertion(expr) => expr.to_value(scope).render(scope),
         }
     }
 }

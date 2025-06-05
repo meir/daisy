@@ -41,7 +41,10 @@ fn save(ctx: &Context, path: &str, file: &mut File) {
 
     let mut content = String::new();
     let ast = file.ast.clone();
-    let render: Vec<String> = ast.iter().map(|node| node.render(file)).collect();
+    let render: Vec<String> = ast
+        .iter()
+        .map(|node| node.render(&mut file.environment))
+        .collect();
     content.push_str(&render.join(""));
 
     std::fs::write(&output_path, content.clone()).unwrap_or_else(|err| {

@@ -1,6 +1,5 @@
-use crate::ast::statement::Statement;
+use super::statement::Statement;
 use crate::ast::Node;
-use crate::resolver::File;
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -13,7 +12,7 @@ pub enum Value {
     Element(Box<Node>),
     Function(
         fn(&Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
-        Vec<Node>,
+        Vec<Statement>,
         Type,
         Vec<Statement>,
     ),
@@ -21,14 +20,14 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn render(&self, file: &mut File) -> String {
+    pub fn render(&self, scope: &mut Scope) -> String {
         match self {
             Value::Str(s) => s.clone(),
             Value::Num(n) => n.to_string(),
             Value::Float(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
-            Value::Element(node) => node.render(file),
-            Value::Function(function, ..) => todo!(),
+            Value::Element(node) => node.render(scope),
+            Value::Function(..) => todo!(),
             Value::Nil => "nil".to_string(),
         }
     }
@@ -46,9 +45,6 @@ impl Value {
     }
 
     pub fn set_value(&mut self, value: Value) {
-        if !Type::matches(&self.get_type(), &value) {
-            panic!("Type mismatch: expected {}, got {}", self.get_type(), value);
-        }
         self.clone_from(&value);
     }
 }
@@ -67,7 +63,7 @@ impl Display for Value {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Type {
     Str,
     Num,
@@ -109,63 +105,98 @@ impl Display for Type {
 
 #[derive(Clone)]
 pub struct Scope {
-    variables: HashMap<String, Value>,
-    parent: Option<Box<Scope>>,
+    variables: Vec<HashMap<String, (Type, Value)>>,
+    current_scope: usize,
 }
 
 impl Scope {
-    pub fn new(parent: Option<Scope>) -> Self {
-        if let Some(parent) = parent {
-            Self {
-                variables: HashMap::new(),
-                parent: Some(Box::new(parent)),
+    pub fn new() -> Self {
+        let mut scope = Self {
+            variables: vec![HashMap::new()],
+            current_scope: 0,
+        };
+
+        scope.define_builtin_function(
+            "hello_world".into(),
+            |_, _, _| Value::Str("Hello world!".into()),
+            Type::Str,
+        );
+
+        scope
+    }
+
+    pub fn sync_scope(&mut self) {
+        let length = self.variables.len();
+
+        if self.current_scope >= length {
+            for _ in length..=self.current_scope {
+                self.variables.push(HashMap::new());
             }
-        } else {
-            let mut scope = Self {
-                variables: HashMap::new(),
-                parent: None,
-            };
-
-            scope.define(
-                Type::Function,
-                "hello_world".to_string(),
-                Value::Function(
-                    |_body, _args, scope| Value::Str("Hello, World!".to_string()),
-                    vec![],
-                    Type::Str,
-                    vec![],
-                ),
-            );
-
-            scope
+        } else if self.current_scope < length - 1 {
+            self.variables.truncate(self.current_scope + 1);
         }
     }
 
+    pub fn wrap<T, F>(&mut self, lambda: F) -> T
+    where
+        F: FnOnce(&mut Scope) -> T,
+    {
+        self.current_scope += 1;
+        self.sync_scope();
+        let result: T = lambda(self);
+        self.current_scope -= 1;
+        return result;
+    }
+
+    pub fn define_builtin_function(
+        &mut self,
+        name: String,
+        func: fn(&Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        return_type: Type,
+    ) {
+        self.define(
+            Type::Function,
+            name,
+            Value::Function(func, vec![], return_type, vec![]),
+        );
+    }
+
     pub fn define(&mut self, type_: Type, name: String, value: Value) {
-        if self.variables.contains_key(&name) {
+        if self.variables[self.current_scope].contains_key(&name) {
             panic!("Value {} already defined in this scope", name);
         }
         if !Type::matches(&type_, &value) {
             panic!("Type mismatch: expected {}, got {}", type_, value);
         }
-        self.variables.insert(name, value);
+        self.variables[self.current_scope].insert(name, (type_, value));
     }
 
     pub fn get(&self, name: &str) -> Option<&Value> {
-        if let Some(var) = self.variables.get(name) {
+        self.get_from_scope(name, self.current_scope)
+    }
+
+    fn get_from_scope(&self, name: &str, scope: usize) -> Option<&Value> {
+        if let Some((_, var)) = self.variables[scope].get(name) {
             return Some(var);
         }
-        if let Some(parent) = &self.parent {
-            return parent.get(name);
+        if self.current_scope > 0 {
+            return self.get_from_scope(name, scope - 1);
         }
         None
     }
 
     pub fn set(&mut self, name: String, value: Value) {
-        if let Some(var) = self.variables.get_mut(&name) {
+        self.set_in_scope(name, value, self.current_scope);
+    }
+
+    fn set_in_scope(&mut self, name: String, value: Value, scope: usize) {
+        if let Some((type_, var)) = self.variables[self.current_scope].get_mut(&name) {
+            if !Type::matches(type_, &value) {
+                panic!("Type mismatch: expected {}, got {}", type_, value);
+            }
             var.set_value(value);
-        } else if let Some(parent) = &mut self.parent {
-            parent.set(name, value);
+        } else if self.current_scope > 0 {
+            return self.set_in_scope(name, value, scope - 1);
         } else {
             panic!("Value {} not found in any scope", name);
         }

@@ -1,6 +1,7 @@
 use crate::ast::Node;
-use crate::resolver::File;
 use std::collections::HashMap;
+
+use super::environment::Scope;
 
 #[derive(Clone)]
 pub struct Element {
@@ -39,14 +40,14 @@ impl Element {
         }
     }
 
-    pub fn render(&self, file: &mut File) -> String {
+    pub fn render(&self, scope: &mut Scope) -> String {
         let attributes: HashMap<String, String> = self
             .attributes
             .iter()
             .map(|(k, v)| {
                 let value = v
                     .iter()
-                    .map(|node| node.render(file))
+                    .map(|node| node.render(scope))
                     .collect::<Vec<String>>()
                     .join(" ");
                 (k.clone(), value)
@@ -65,7 +66,7 @@ impl Element {
         };
 
         for node in &self.content {
-            output.push_str(node.render(file).as_str());
+            output.push_str(node.render(scope).as_str());
         }
         output.push_str(&format!("</{}>", self.tag));
         output

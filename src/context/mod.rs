@@ -1,9 +1,9 @@
-use crate::grammar::TermParser;
+use crate::grammar::DaisyParser;
 use log::warn;
 use serde::Deserialize;
 
 pub struct Context {
-    pub parser: TermParser,
+    pub parser: DaisyParser,
     pub config: Config,
 }
 
@@ -42,7 +42,7 @@ impl Context {
         cfg.src = absolute_src.to_str().unwrap().to_string();
 
         Context {
-            parser: TermParser::new(),
+            parser: DaisyParser::new(),
             config: cfg,
         }
     }
