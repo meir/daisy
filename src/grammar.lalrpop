@@ -56,8 +56,11 @@ Term: Expression = {
   "(" <Expression> ")",
   <v:Value> => Expression::Value(v),
   <id:Identifier> => Expression::Identifier(id),
+  <s:Script> => Expression::Script(s),
   ExpressionCall,
 };
+
+Script: String = "$"<s:r#"`([^`\\]|\\.)*`"#> => s[1..s.len()-1].to_string();
 
 Value: Value = {
   <s:Str> => Value::Str(s),

@@ -2,14 +2,19 @@
 str title = hello_world()
 
 func header = (str input) str {
-  return : h1#title.red.center {
+  return :h1#title.red.center {
     @{input}
   }
 }
 
-str head = header("Hello world") + "!"
+str head = header("Hello World") + "!"
+
+str term = $`echo $TERM`
 
 html {
   head > title > @{title}
-  body > @{head}
+  body {
+    h1 > @{head}
+    div > @{term}
+  }
 }

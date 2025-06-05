@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use super::{environment::Scope, function::call_function};
 use crate::ast::environment::Value;
 
@@ -10,6 +12,7 @@ pub enum Expression {
     Subtraction(Box<Expression>, Box<Expression>),
     Division(Box<Expression>, Box<Expression>),
     Multiplication(Box<Expression>, Box<Expression>),
+    Script(String),
     Nil,
 }
 
@@ -89,6 +92,15 @@ impl Expression {
                         left_value.get_type(),
                         right_value.get_type()
                     ),
+                }
+            }
+            Expression::Script(script) => {
+                let result = Command::new("bash").arg("-c").arg(script).output();
+                match result {
+                    Ok(output) => {
+                        Value::Str(String::from_utf8_lossy(&output.stdout).trim().to_string())
+                    }
+                    Err(e) => panic!("Failed to execute script '{}': {}", script, e),
                 }
             }
             //later
