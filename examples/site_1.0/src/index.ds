@@ -1,13 +1,13 @@
 
 str title = hello_world()
 
-func header = (str input) str {
+func header = (str input) element {
   return :h1#title.red.center {
     @{input}
   }
 }
 
-str head = header("Hello World") + "!"
+element head = header("Hello World")
 
 str term = $`echo $TERM`
 

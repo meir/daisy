@@ -10,6 +10,7 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     Element(Box<Node>),
+    ScopedElement(Scope, Box<Node>),
     Function(
         fn(&Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
         Vec<Statement>,
@@ -27,6 +28,7 @@ impl Value {
             Value::Float(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Element(node) => node.render(scope),
+            Value::ScopedElement(scope, element) => element.render(&mut scope.clone()),
             Value::Function(..) => todo!(),
             Value::Nil => "nil".to_string(),
         }
@@ -39,6 +41,7 @@ impl Value {
             Value::Float(_) => Type::Float,
             Value::Bool(_) => Type::Bool,
             Value::Element(_) => Type::Element,
+            Value::ScopedElement(_, _) => Type::Element,
             Value::Function(..) => Type::Function,
             Value::Nil => Type::Nil,
         }
@@ -58,6 +61,7 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "bool({})", b),
             Value::Element(_) => write!(f, "element()"),
             Value::Function(..) => write!(f, "function()"),
+            Value::ScopedElement(_, _) => write!(f, "scoped_element()"),
             Value::Nil => write!(f, "nil"),
         }
     }
@@ -82,6 +86,7 @@ impl Type {
             (Type::Float, Value::Float(_)) => true,
             (Type::Bool, Value::Bool(_)) => true,
             (Type::Element, Value::Element(_)) => true,
+            (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
             (_, Value::Nil) => true,
             _ => false,
@@ -123,6 +128,13 @@ impl Scope {
         );
 
         scope
+    }
+
+    #[allow(dead_code)]
+    pub fn print_current_scope(&self) {
+        for (name, value) in &self.variables[self.current_scope] {
+            println!("{}: {} ({})", name, value.1, value.0);
+        }
     }
 
     pub fn sync_scope(&mut self) {

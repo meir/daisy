@@ -23,7 +23,7 @@ impl Node {
             Node::Element(element) => element.render(scope),
             Node::Text(text) => text.clone(),
             Node::Statement(stmt) => {
-                stmt.process(scope);
+                stmt.process(scope).unwrap();
                 "".to_string()
             }
             Node::Insertion(expr) => expr.to_value(scope).render(scope),

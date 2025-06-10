@@ -1,9 +1,10 @@
+use std::fmt::Error;
+
 use super::{
-    environment::{Scope, Type},
+    environment::{Scope, Type, Value},
     expression::Expression,
     function::call_function,
 };
-use crate::ast::environment::Value;
 
 #[derive(Clone)]
 pub enum Statement {
@@ -14,7 +15,7 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn process(&self, scope: &mut Scope) {
+    pub fn process(&self, scope: &mut Scope) -> Result<(bool, Value), Error> {
         match self {
             Statement::Call(name, args) => {
                 let value = scope
@@ -22,17 +23,21 @@ impl Statement {
                     .cloned()
                     .unwrap_or_else(|| panic!("Function '{}' not defined", name));
                 call_function(&value, args, scope);
+                Ok((false, Value::Nil))
             }
             Statement::Definition(type_, name, expression) => {
                 let value = expression.to_value(scope);
                 scope.define(type_.clone(), name.clone(), value);
+                Ok((false, Value::Nil))
             }
             Statement::Assignment(name, expression) => {
                 let value = expression.to_value(scope);
                 scope.set(name.clone(), value);
+                Ok((false, Value::Nil))
             }
             Statement::Return(expression) => {
-                let _value = expression.to_value(scope);
+                let value = expression.to_value(scope);
+                Ok((true, value))
             }
         }
     }

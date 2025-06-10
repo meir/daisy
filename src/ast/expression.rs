@@ -19,7 +19,12 @@ pub enum Expression {
 impl Expression {
     pub fn to_value(&self, scope: &mut Scope) -> Value {
         match self {
-            Expression::Value(value) => value.clone(),
+            Expression::Value(value) => match value {
+                // to keep the scope that the current element is in so that the element can render
+                // properly without missing variables
+                Value::Element(element) => Value::ScopedElement(scope.clone(), element.clone()),
+                _ => value.clone(),
+            },
             Expression::Call(name, args) => {
                 let value = scope
                     .get(name)

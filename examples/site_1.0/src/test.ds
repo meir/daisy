@@ -1,10 +1,14 @@
 
 str title = "Website 1.0"
 
-element ul = :ul {
-  li#first-item > "This is a list item"
-  li > "This is another list item"
-  li > "This is a third list item"
+str line_content = "This is a list item"
+
+element line = : li > @{line_content}
+
+element list = : ul {
+  @{line}
+  @{line}
+  @{line}
 }
 
 html {
@@ -14,6 +18,6 @@ html {
 
   body {
     h1 > "Hello world!"
-    @{ul}
+    @{list}
   }
 }
