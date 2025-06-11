@@ -1,12 +1,16 @@
 
 str title = hello_world()
 
-func header = (bool input) str {
+func header = (bool input, str output) str {
   if input == true {
     return  "bye world"
   }
 
-  return "hi world"
+  if output == nil {
+    return "hello world"
+  }
+
+  return output
 }
 
 str term = $`echo $TERM`
@@ -14,7 +18,7 @@ str term = $`echo $TERM`
 html {
   head > title > @{title}
   body {
-    h1 > @{header(true)}
+    h1 > @{header(false)}
     div > @{term}
   }
 }

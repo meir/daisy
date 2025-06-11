@@ -59,6 +59,7 @@ impl PartialEq for Value {
             (Value::Num(l), Value::Num(r)) => l == r,
             (Value::Float(l), Value::Float(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
+            (Value::Nil, Value::Nil) => true,
 
             _ => std::mem::discriminant(self) == std::mem::discriminant(other),
         }

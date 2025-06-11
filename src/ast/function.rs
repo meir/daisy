@@ -16,8 +16,9 @@ pub fn call_function(value: &Value, args: &Vec<Value>, scope: &mut Scope) -> Val
                 }
 
                 // set arguments in scope with variables given in call
-                for arg in args {
-                    let param = params.get(0).unwrap();
+                for i in 0..args.len() {
+                    let arg = args.get(i).unwrap();
+                    let param = params.get(i).unwrap();
                     match param {
                         Statement::Definition(_, name, _) => {
                             inner_scope.set(name.clone(), arg.clone());

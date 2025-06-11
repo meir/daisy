@@ -59,6 +59,7 @@ impl Statement {
                         }
                         Ok((false, Value::Nil))
                     }),
+                    Value::Bool(false) => Ok((false, Value::Nil)),
                     _ => panic!(
                         "Condition in if statement must be a boolean, got {}",
                         condition_value.get_type()

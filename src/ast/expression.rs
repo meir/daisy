@@ -14,6 +14,12 @@ pub enum Expression {
     Multiplication(Box<Expression>, Box<Expression>),
     Equal(Box<Expression>, Box<Expression>),
     NotEqual(Box<Expression>, Box<Expression>),
+    Or(Box<Expression>, Box<Expression>),
+    And(Box<Expression>, Box<Expression>),
+    LessThan(Box<Expression>, Box<Expression>),
+    LessThanOrEqual(Box<Expression>, Box<Expression>),
+    GreaterThan(Box<Expression>, Box<Expression>),
+    GreaterThanOrEqual(Box<Expression>, Box<Expression>),
     Script(String),
     Nil,
 }
@@ -119,6 +125,82 @@ impl Expression {
                 let left_value = left.to_value(scope);
                 let right_value = right.to_value(scope);
                 Value::Bool(left_value != right_value)
+            }
+            Expression::Or(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                match (&left_value, &right_value) {
+                    (Value::Bool(l), Value::Bool(r)) => Value::Bool(*l || *r),
+                    _ => panic!(
+                        "Type mismatch in logical OR: {} || {}",
+                        left_value.get_type(),
+                        right_value.get_type()
+                    ),
+                }
+            }
+            Expression::And(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                match (&left_value, &right_value) {
+                    (Value::Bool(l), Value::Bool(r)) => Value::Bool(*l && *r),
+                    _ => panic!(
+                        "Type mismatch in logical AND: {} && {}",
+                        left_value.get_type(),
+                        right_value.get_type()
+                    ),
+                }
+            }
+            Expression::LessThan(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                match (&left_value, &right_value) {
+                    (Value::Num(l), Value::Num(r)) => Value::Bool(l < r),
+                    (Value::Float(l), Value::Float(r)) => Value::Bool(l < r),
+                    _ => panic!(
+                        "Type mismatch in less than: {} < {}",
+                        left_value.get_type(),
+                        right_value.get_type()
+                    ),
+                }
+            }
+            Expression::LessThanOrEqual(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                match (&left_value, &right_value) {
+                    (Value::Num(l), Value::Num(r)) => Value::Bool(l <= r),
+                    (Value::Float(l), Value::Float(r)) => Value::Bool(l <= r),
+                    _ => panic!(
+                        "Type mismatch in less than or equal: {} <= {}",
+                        left_value.get_type(),
+                        right_value.get_type()
+                    ),
+                }
+            }
+            Expression::GreaterThan(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                match (&left_value, &right_value) {
+                    (Value::Num(l), Value::Num(r)) => Value::Bool(l > r),
+                    (Value::Float(l), Value::Float(r)) => Value::Bool(l > r),
+                    _ => panic!(
+                        "Type mismatch in greater than: {} > {}",
+                        left_value.get_type(),
+                        right_value.get_type()
+                    ),
+                }
+            }
+            Expression::GreaterThanOrEqual(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                match (&left_value, &right_value) {
+                    (Value::Num(l), Value::Num(r)) => Value::Bool(l >= r),
+                    (Value::Float(l), Value::Float(r)) => Value::Bool(l >= r),
+                    _ => panic!(
+                        "Type mismatch in greater than or equal: {} >= {}",
+                        left_value.get_type(),
+                        right_value.get_type()
+                    ),
+                }
             }
             //later
             Expression::Nil => Value::Nil,

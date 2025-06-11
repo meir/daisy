@@ -37,12 +37,19 @@ Bool: bool = {
   "true" => true,
   "false" => false,
 };
+Nil: Value = "nil" => Value::Nil;
 
 // Expressions
 
 Expression: Expression = {
   <l:Expression> "==" <r:Calc> => Expression::Equal(Box::new(l), Box::new(r)),
   <l:Expression> "!=" <r:Calc> => Expression::NotEqual(Box::new(l), Box::new(r)),
+  <l:Expression> "||" <r:Calc> => Expression::Or(Box::new(l), Box::new(r)),
+  <l:Expression> "&&" <r:Calc> => Expression::And(Box::new(l), Box::new(r)),
+  <l:Expression> "<" <r:Calc> => Expression::LessThan(Box::new(l), Box::new(r)),
+  <l:Expression> "<=" <r:Calc> => Expression::LessThanOrEqual(Box::new(l), Box::new(r)),
+  <l:Expression> ">" <r:Calc> => Expression::GreaterThan(Box::new(l), Box::new(r)),
+  <l:Expression> ">=" <r:Calc> => Expression::GreaterThanOrEqual(Box::new(l), Box::new(r)),
   Calc,
 };
 
@@ -74,6 +81,7 @@ Value: Value = {
   <n:Num> => Value::Num(n),
   <f:Float> => Value::Float(f),
   <b:Bool> => Value::Bool(b),
+  Nil,
   ":" <e:Element> => Value::Element(e.into()),
   Function,
 }
