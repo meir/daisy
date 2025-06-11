@@ -52,6 +52,19 @@ impl Value {
     }
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Str(l), Value::Str(r)) => l == r,
+            (Value::Num(l), Value::Num(r)) => l == r,
+            (Value::Float(l), Value::Float(r)) => l == r,
+            (Value::Bool(l), Value::Bool(r)) => l == r,
+
+            _ => std::mem::discriminant(self) == std::mem::discriminant(other),
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -12,6 +12,8 @@ pub enum Expression {
     Subtraction(Box<Expression>, Box<Expression>),
     Division(Box<Expression>, Box<Expression>),
     Multiplication(Box<Expression>, Box<Expression>),
+    Equal(Box<Expression>, Box<Expression>),
+    NotEqual(Box<Expression>, Box<Expression>),
     Script(String),
     Nil,
 }
@@ -107,6 +109,16 @@ impl Expression {
                     }
                     Err(e) => panic!("Failed to execute script '{}': {}", script, e),
                 }
+            }
+            Expression::Equal(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                Value::Bool(left_value == right_value)
+            }
+            Expression::NotEqual(left, right) => {
+                let left_value = left.to_value(scope);
+                let right_value = right.to_value(scope);
+                Value::Bool(left_value != right_value)
             }
             //later
             Expression::Nil => Value::Nil,

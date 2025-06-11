@@ -41,8 +41,14 @@ Bool: bool = {
 // Expressions
 
 Expression: Expression = {
-  <l:Expression> "+" <r:Factor> => Expression::Addition(Box::new(l), Box::new(r)),
-  <l:Expression> "-" <r:Factor> => Expression::Subtraction(Box::new(l), Box::new(r)),
+  <l:Expression> "==" <r:Calc> => Expression::Equal(Box::new(l), Box::new(r)),
+  <l:Expression> "!=" <r:Calc> => Expression::NotEqual(Box::new(l), Box::new(r)),
+  Calc,
+};
+
+Calc: Expression = {
+  <l:Calc> "+" <r:Factor> => Expression::Addition(Box::new(l), Box::new(r)),
+  <l:Calc> "-" <r:Factor> => Expression::Subtraction(Box::new(l), Box::new(r)),
   Factor,
 };
 
@@ -51,6 +57,7 @@ Factor: Expression = {
   <l:Factor> "/" <r:Term> => Expression::Division(Box::new(l), Box::new(r)),
   Term,
 };
+
 
 Term: Expression = {
   "(" <Expression> ")",
@@ -104,6 +111,8 @@ Statement: Statement = {
   Assignment,
   Return,
   StatementCall,
+  If,
+  For,
 }
 
 Definition: Statement = {
@@ -119,6 +128,15 @@ Return: Statement = "return" <s:Expression> => Statement::Return(s.into());
 
 StatementCall: Statement = {
   <id:Identifier> "(" <args:Value*> ")" => Statement::Call(id, args),
+}
+
+If: Statement = {
+  "if" <condition:Expression> "{" <body:Statement*> "}" => Statement::If(condition, body),
+}
+
+For: Statement = {
+  "for" <id:Identifier> "in" <iterable:Expression> "{" <body:Statement*> "}" => Statement::For(id, iterable, body),
+  "for" <init:Definition> ";" <comp:Expression> ";" <step:Expression> "{" <body:Statement*> "}" => Statement::ForLoop(init.into(), comp, step, body),
 }
 
 // html related rules

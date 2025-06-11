@@ -12,6 +12,9 @@ pub enum Statement {
     Definition(Type, String, Expression),
     Assignment(String, Expression),
     Return(Expression),
+    If(Expression, Vec<Statement>),
+    For(String, Expression, Vec<Statement>),
+    ForLoop(Box<Statement>, Expression, Expression, Vec<Statement>),
 }
 
 impl Statement {
@@ -39,6 +42,31 @@ impl Statement {
                 let value = expression.to_value(scope);
                 Ok((true, value))
             }
+            Statement::If(condition, statements) => {
+                let condition_value = condition.to_value(scope);
+                match condition_value {
+                    Value::Bool(true) => scope.wrap(|inner_scope| {
+                        for stmt in statements {
+                            match stmt.process(inner_scope) {
+                                Ok((true, value)) => {
+                                    return Ok((true, value));
+                                }
+                                Ok((false, _)) => {}
+                                Err(err) => {
+                                    panic!("Error processing statement: {:?}", err);
+                                }
+                            }
+                        }
+                        Ok((false, Value::Nil))
+                    }),
+                    _ => panic!(
+                        "Condition in if statement must be a boolean, got {}",
+                        condition_value.get_type()
+                    ),
+                }
+            }
+            Statement::For(variable, iterable, statements) => Ok((false, Value::Nil)),
+            Statement::ForLoop(init, condition, increment, statements) => Ok((false, Value::Nil)),
         }
     }
 }
