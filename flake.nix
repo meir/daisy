@@ -45,17 +45,23 @@
           default = daisy;
         };
 
-        devShells.default =
-          with pkgs;
-          mkShell {
-            buildInputs = [
-              libiconv
-              openssl
-              pkg-config
-              rust
-              self.packages.${system}.daisy
-            ];
-          };
+        devShells = {
+          default =
+            with pkgs;
+            mkShell {
+              buildInputs = [
+                libiconv
+                openssl
+                pkg-config
+                rust
+              ];
+            };
+          build =
+            with pkgs;
+            mkShell {
+              buildInputs = [ self.packages.${system}.daisy ];
+            };
+        };
       }
     );
 }
