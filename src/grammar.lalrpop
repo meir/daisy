@@ -157,6 +157,7 @@ Attribute: (String, Vec<Node>) = {
   "#" <id:Identifier> => ("id".to_string(), vec![Node::Text(id)]),
   "." <id:Identifier> => ("class".to_string(), vec![Node::Text(id)]),
   <id:Identifier> "=" <s:Str> => (id, vec![Node::Text(s)]),
+  <id:Identifier> "=" <i:Insertion> => (id, vec![i]),
 }
 
 ElementBody: Node = {
