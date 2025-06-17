@@ -1,5 +1,6 @@
 use super::statement::Statement;
-use crate::ast::Node;
+use crate::ast::node::Node;
+use crate::context::Context;
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -12,7 +13,7 @@ pub enum Value {
     Element(Box<Node>),
     ScopedElement(Scope, Box<Node>),
     Function(
-        fn(&Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
         Vec<Statement>,
         Type,
         Vec<Statement>,
@@ -21,14 +22,14 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn render(&self, scope: &mut Scope) -> String {
+    pub fn render(&self, ctx: &Context, scope: &mut Scope) -> String {
         match self {
             Value::Str(s) => s.clone(),
             Value::Num(n) => n.to_string(),
             Value::Float(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
-            Value::Element(node) => node.render(scope),
-            Value::ScopedElement(scope, element) => element.render(&mut scope.clone()),
+            Value::Element(node) => node.render(ctx, scope),
+            Value::ScopedElement(scope, element) => element.render(ctx, &mut scope.clone()),
             Value::Function(..) => todo!(),
             Value::Nil => "nil".to_string(),
         }
@@ -90,6 +91,7 @@ pub enum Type {
     Element,
     Function,
     Nil,
+    Any, // not usable in the language, but needed to return any type using "use"
 }
 
 impl Type {
@@ -103,6 +105,7 @@ impl Type {
             (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
             (_, Value::Nil) => true,
+            (Type::Any, _) => true,
             _ => false,
         }
     }
@@ -118,6 +121,7 @@ impl Display for Type {
             Type::Element => write!(f, "Element"),
             Type::Function => write!(f, "Function"),
             Type::Nil => write!(f, "Nil"),
+            Type::Any => write!(f, "Any"),
         }
     }
 }
@@ -130,18 +134,10 @@ pub struct Scope {
 
 impl Scope {
     pub fn new() -> Self {
-        let mut scope = Self {
+        Self {
             variables: vec![HashMap::new()],
             current_scope: 0,
-        };
-
-        scope.define_builtin_function(
-            "hello_world".into(),
-            |_, _, _| Value::Str("Hello world!".into()),
-            Type::Str,
-        );
-
-        scope
+        }
     }
 
     #[allow(dead_code)]
@@ -177,7 +173,7 @@ impl Scope {
     pub fn define_builtin_function(
         &mut self,
         name: String,
-        func: fn(&Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        func: fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
         return_type: Type,
     ) {
         self.define(

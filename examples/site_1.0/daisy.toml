@@ -1,4 +1,5 @@
 
+root = "./"
 src = "./src"
 out = "./site"
 

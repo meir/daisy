@@ -1,24 +1,14 @@
 
 str title = hello_world()
 
-func header = (bool input, str output) str {
-  if input == true {
-    return  "bye world"
-  }
-
-  if output == nil {
-    return "hello world"
-  }
-
-  return output
-}
+func header = use("component/title")
 
 str term = $`echo $TERM`
 
-html {
+return : html {
   head > title > @{title}
   body {
-    h1 > @{header(false)}
+    @{header("hello there!")}
     div > @{term}
   }
 }

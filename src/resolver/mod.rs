@@ -1,5 +1,6 @@
-use crate::ast::environment::{Scope, Type, Value};
-use crate::ast::Node;
+use crate::ast::builtin;
+use crate::ast::environment::Scope;
+use crate::ast::statement::Statement;
 use crate::context::Context;
 use lalrpop_util::ParseError;
 use std::{
@@ -8,17 +9,17 @@ use std::{
 };
 
 pub struct File {
-    src: PathBuf,
-    content: String,
+    pub src: PathBuf,
+    pub content: String,
     pub environment: Scope,
 
-    pub ast: Vec<Node>,
+    pub ast: Vec<Statement>,
 }
 
 impl File {
     #[allow(dead_code)]
     pub fn load(ctx: &Context, file: &str) -> File {
-        let src = Path::new(ctx.config.src.as_str()).join(file);
+        let src = Path::new(ctx.config.root.as_str()).join(file);
         Self::load_absolute(ctx, src.to_str().unwrap())
     }
 
@@ -85,17 +86,7 @@ impl File {
             ast,
         };
 
-        file.environment.define(
-            Type::Str,
-            "src".into(),
-            Value::Str(file.src.to_str().unwrap().into()),
-        );
-
-        file.environment.define(
-            Type::Str,
-            "content".into(),
-            Value::Str(file.content.clone()),
-        );
+        builtin::init(&mut file);
 
         file
     }

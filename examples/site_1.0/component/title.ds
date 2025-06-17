@@ -1,0 +1,7 @@
+
+return (str title) element {
+  return : h1.imported {
+    @{title}
+  }
+}
+

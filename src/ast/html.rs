@@ -1,4 +1,4 @@
-use crate::ast::Node;
+use crate::{ast::node::Node, context::Context};
 use std::collections::HashMap;
 
 use super::environment::Scope;
@@ -40,14 +40,14 @@ impl Element {
         }
     }
 
-    pub fn render(&self, scope: &mut Scope) -> String {
+    pub fn render(&self, ctx: &Context, scope: &mut Scope) -> String {
         let attributes: HashMap<String, String> = self
             .attributes
             .iter()
             .map(|(k, v)| {
                 let value = v
                     .iter()
-                    .map(|node| node.render(scope))
+                    .map(|node| node.render(ctx, scope))
                     .collect::<Vec<String>>()
                     .join(" ");
                 (k.clone(), value)
@@ -66,7 +66,7 @@ impl Element {
         };
 
         for node in &self.content {
-            output.push_str(node.render(scope).as_str());
+            output.push_str(node.render(ctx, scope).as_str());
         }
         output.push_str(&format!("</{}>", self.tag));
         output

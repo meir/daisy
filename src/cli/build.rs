@@ -1,3 +1,5 @@
+use crate::ast::environment::Value;
+use crate::ast::function::default_function;
 use crate::context::Context;
 use crate::resolver::File;
 use std::fs;
@@ -39,13 +41,9 @@ fn save(ctx: &Context, path: &str, file: &mut File) {
         panic!("Failed to create directory: {}: {}", path, err);
     });
 
-    let mut content = String::new();
     let ast = file.ast.clone();
-    let render: Vec<String> = ast
-        .iter()
-        .map(|node| node.render(&mut file.environment))
-        .collect();
-    content.push_str(&render.join(""));
+    let render: Value = default_function(ctx, &ast, &vec![], &mut file.environment);
+    let content = &render.render(ctx, &mut file.environment);
 
     std::fs::write(&output_path, content.clone()).unwrap_or_else(|err| {
         panic!("Failed to write file: {}: {}", path, err);

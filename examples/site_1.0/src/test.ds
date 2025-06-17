@@ -11,7 +11,7 @@ element list = : ul {
   @{line}
 }
 
-html {
+return : html {
   head {
     title > @{title}
   }

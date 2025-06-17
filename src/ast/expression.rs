@@ -1,7 +1,7 @@
 use std::process::Command;
 
 use super::{environment::Scope, function::call_function};
-use crate::ast::environment::Value;
+use crate::{ast::environment::Value, context::Context};
 
 #[derive(Clone)]
 pub enum Expression {
@@ -25,7 +25,7 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn to_value(&self, scope: &mut Scope) -> Value {
+    pub fn to_value(&self, ctx: &Context, scope: &mut Scope) -> Value {
         match self {
             Expression::Value(value) => match value {
                 // to keep the scope that the current element is in so that the element can render
@@ -38,15 +38,15 @@ impl Expression {
                     .get(name)
                     .cloned()
                     .unwrap_or_else(|| panic!("Function '{}' not defined", name));
-                call_function(&value, args, scope)
+                call_function(ctx, &value, args, scope)
             }
             Expression::Identifier(name) => scope
                 .get(name)
                 .cloned()
                 .unwrap_or_else(|| panic!("Variable '{}' not defined in the current scope", name)),
             Expression::Addition(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (left_value.clone(), right_value.clone()) {
                     (Value::Num(l), Value::Num(r)) => Value::Num(l + r),
                     (Value::Float(l), Value::Float(r)) => Value::Float(l + r),
@@ -59,8 +59,8 @@ impl Expression {
                 }
             }
             Expression::Subtraction(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (left_value.clone(), right_value.clone()) {
                     (Value::Num(l), Value::Num(r)) => Value::Num(l - r),
                     (Value::Float(l), Value::Float(r)) => Value::Float(l - r),
@@ -72,8 +72,8 @@ impl Expression {
                 }
             }
             Expression::Multiplication(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (left_value.clone(), right_value.clone()) {
                     (Value::Num(l), Value::Num(r)) => Value::Num(l * r),
                     (Value::Float(l), Value::Float(r)) => Value::Float(l * r),
@@ -85,8 +85,8 @@ impl Expression {
                 }
             }
             Expression::Division(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (left_value.clone(), right_value.clone()) {
                     (Value::Num(l), Value::Num(r)) => {
                         if r == 0 {
@@ -117,18 +117,18 @@ impl Expression {
                 }
             }
             Expression::Equal(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 Value::Bool(left_value == right_value)
             }
             Expression::NotEqual(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 Value::Bool(left_value != right_value)
             }
             Expression::Or(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (&left_value, &right_value) {
                     (Value::Bool(l), Value::Bool(r)) => Value::Bool(*l || *r),
                     _ => panic!(
@@ -139,8 +139,8 @@ impl Expression {
                 }
             }
             Expression::And(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (&left_value, &right_value) {
                     (Value::Bool(l), Value::Bool(r)) => Value::Bool(*l && *r),
                     _ => panic!(
@@ -151,8 +151,8 @@ impl Expression {
                 }
             }
             Expression::LessThan(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (&left_value, &right_value) {
                     (Value::Num(l), Value::Num(r)) => Value::Bool(l < r),
                     (Value::Float(l), Value::Float(r)) => Value::Bool(l < r),
@@ -164,8 +164,8 @@ impl Expression {
                 }
             }
             Expression::LessThanOrEqual(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (&left_value, &right_value) {
                     (Value::Num(l), Value::Num(r)) => Value::Bool(l <= r),
                     (Value::Float(l), Value::Float(r)) => Value::Bool(l <= r),
@@ -177,8 +177,8 @@ impl Expression {
                 }
             }
             Expression::GreaterThan(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (&left_value, &right_value) {
                     (Value::Num(l), Value::Num(r)) => Value::Bool(l > r),
                     (Value::Float(l), Value::Float(r)) => Value::Bool(l > r),
@@ -190,8 +190,8 @@ impl Expression {
                 }
             }
             Expression::GreaterThanOrEqual(left, right) => {
-                let left_value = left.to_value(scope);
-                let right_value = right.to_value(scope);
+                let left_value = left.to_value(ctx, scope);
+                let right_value = right.to_value(ctx, scope);
                 match (&left_value, &right_value) {
                     (Value::Num(l), Value::Num(r)) => Value::Bool(l >= r),
                     (Value::Float(l), Value::Float(r)) => Value::Bool(l >= r),

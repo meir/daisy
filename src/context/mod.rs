@@ -10,6 +10,7 @@ pub struct Context {
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct Config {
+    pub root: String,
     pub src: String,
     pub output: String,
     pub pretty: bool,
@@ -18,6 +19,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
+            root: "./".to_string(),
             src: "./src".to_string(),
             output: "./out".to_string(),
             pretty: false,

@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::Node;
+use crate::ast::node::Node;
 use crate::ast::environment::{Type, Value};
 use crate::ast::html::Element;
 use crate::ast::expression::Expression;
@@ -8,14 +8,9 @@ use crate::ast::statement::Statement;
 
 grammar;
 
-pub Daisy: Vec<Node> = {
-  <Root*>
+pub Daisy: Vec<Statement> = {
+  <body:Statement*> => body,
 };
-
-Root: Node = {
-  <c:Statement> => Node::Statement(c),
-  Element,
-}
 
 // Types / Identifiers
 
