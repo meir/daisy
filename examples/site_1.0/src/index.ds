@@ -4,11 +4,17 @@ str title = hello_world()
 func header = use("component/title")
 
 str term = $`echo $TERM`
+str cat_pic = use("assets/cat.png")
+str css = use("assets/main.scss")
 
 return : html {
-  head > title > @{title}
+  head { 
+    title > @{title}
+    link rel="stylesheet" href=@{css};
+  }
   body {
     @{header("hello there!")}
     div > @{term}
+    div > img src=@{cat_pic} alt="A cute cat";
   }
 }

@@ -151,6 +151,7 @@ Insertion: Node = {
 Element: Node = {
   <id:Identifier> <attrs:Attribute*> "{" <body:ElementBody*> "}" => Node::Element(Element::new(id, attrs, body)),
   <id:Identifier> <attrs:Attribute*> ">" <body:ElementBody> => Node::Element(Element::new(id, attrs, vec![body])),
+  <id:Identifier> <attrs:Attribute*> ";" => Node::Element(Element::new(id, attrs, vec![])),
 }
 
 Attribute: (String, Vec<Node>) = {

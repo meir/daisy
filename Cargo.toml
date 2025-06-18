@@ -13,6 +13,7 @@ lalrpop = "0.22.1"
 [dependencies]
 clap = "4.5.38"
 env_logger = "0.11.8"
+grass = "0.13.4"
 log = { version = "0.4.27", features = ["std"] }
 pico-args = "0.5.0"
 toml = "0.8.22"
@@ -26,3 +27,6 @@ features = ["lexer", "unicode"]
 version = "1.0.219"
 features = ["derive"]
 
+[dependencies.uuid]
+version = "1.17.0"
+features = ["v4"]

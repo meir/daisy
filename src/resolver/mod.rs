@@ -19,7 +19,7 @@ pub struct File {
 impl File {
     #[allow(dead_code)]
     pub fn load(ctx: &Context, file: &str) -> File {
-        let src = Path::new(ctx.config.root.as_str()).join(file);
+        let src = Path::new(ctx.config.paths.workdir.as_str()).join(file);
         Self::load_absolute(ctx, src.to_str().unwrap())
     }
 

@@ -1,5 +1,9 @@
 
-root = "./examples/site_1.0"
-src = "./examples/site_1.0/src"
-output = "./examples/site_1.0/site"
-pretty = true
+[paths]
+workdir = "./examples/site_1.0"
+pages = "src"
+output = "site"
+
+[assets]
+folder = "assets"
+use_uuids = true
