@@ -82,7 +82,7 @@ Value: Value = {
 }
 
 ExpressionCall: Expression = {
-  <n:Identifier> "(" <args:(<Value> ",")*> <arg:Value?> ")" => {
+  <n:Identifier> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
     let mut args = args;
     if let Some(a) = arg {
       args.push(a);
@@ -130,7 +130,13 @@ Assignment: Statement = {
 Return: Statement = "return" <s:Expression> => Statement::Return(s.into());
 
 StatementCall: Statement = {
-  <id:Identifier> "(" <args:Value*> ")" => Statement::Call(id, args),
+  <id:Identifier> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
+    let mut args = args;
+    if let Some(a) = arg {
+      args.push(a);
+    }
+    Statement::Call(id, args)
+  }
 }
 
 If: Statement = {

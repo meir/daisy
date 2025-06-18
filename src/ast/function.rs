@@ -2,22 +2,38 @@ use crate::context::Context;
 
 use super::{
     environment::{Scope, Type, Value},
+    expression::Expression,
     statement::Statement,
 };
 
-pub fn call_function(ctx: &Context, value: &Value, args: &Vec<Value>, scope: &mut Scope) -> Value {
+pub fn call_function(
+    ctx: &Context,
+    value: &Value,
+    args: &Vec<Expression>,
+    scope: &mut Scope,
+) -> Value {
     if !Type::matches(&Type::Function, &value) {
         panic!("Expected a function, got {}", value.get_type());
     }
 
+    let args: Vec<Value> = args.iter().map(|arg| arg.to_value(ctx, scope)).collect();
+
     match value {
         Value::Function(func, params, return_type, body) => {
-            run_function(ctx, func, params, return_type, args, body, scope)
+            run_function(ctx, func, params, return_type, &args, body, scope)
         }
         Value::ScopedFunction(scope_func, func, params, return_type, body) => {
             // create a new scope for the function call
             let mut inner_scope = scope_func.clone();
-            run_function(ctx, func, params, return_type, args, body, &mut inner_scope)
+            run_function(
+                ctx,
+                func,
+                params,
+                return_type,
+                &args,
+                body,
+                &mut inner_scope,
+            )
         }
         _ => Value::Nil,
     }

@@ -6,7 +6,7 @@ use crate::{ast::environment::Value, context::Context};
 #[derive(Clone)]
 pub enum Expression {
     Value(Value),
-    Call(String, Vec<Value>),
+    Call(String, Vec<Expression>),
     Identifier(String),
     Addition(Box<Expression>, Box<Expression>),
     Subtraction(Box<Expression>, Box<Expression>),

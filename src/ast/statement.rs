@@ -10,7 +10,7 @@ use super::{
 
 #[derive(Clone)]
 pub enum Statement {
-    Call(String, Vec<Value>),
+    Call(String, Vec<Expression>),
     Definition(Type, String, Expression),
     Assignment(String, Expression),
     Return(Expression),
