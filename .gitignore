@@ -1,2 +1,4 @@
 /target
 /.direnv
+.DS_Store
+/examples/*/site
