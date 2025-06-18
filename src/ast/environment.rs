@@ -167,6 +167,7 @@ impl Scope {
         self.sync_scope();
         let result: T = lambda(self);
         self.current_scope -= 1;
+        self.sync_scope();
         return result;
     }
 
