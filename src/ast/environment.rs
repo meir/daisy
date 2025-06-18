@@ -202,7 +202,7 @@ impl Scope {
         if let Some((_, var)) = self.variables[scope].get(name) {
             return Some(var);
         }
-        if self.current_scope > 0 {
+        if scope > 0 {
             return self.get_from_scope(name, scope - 1);
         }
         None
@@ -218,7 +218,7 @@ impl Scope {
                 panic!("Type mismatch: expected {}, got {}", type_, value);
             }
             var.set_value(value);
-        } else if self.current_scope > 0 {
+        } else if scope > 0 {
             return self.set_in_scope(name, value, scope - 1);
         } else {
             panic!("Value {} not found in any scope", name);
