@@ -20,8 +20,15 @@ pub fn builtin_use(ctx: &Context, _: &Vec<Statement>, inputs: &Vec<Value>, _: &m
             let mut import = import.clone();
             if !path.exists() {
                 if !import.ends_with(".ds") {
-                    import.push_str(".ds");
-                    path = Path::new(ctx.config.paths.workdir.as_str()).join(import.as_str());
+                    let tmp_import = format!("{}.ds", import);
+                    let tmp_path =
+                        Path::new(ctx.config.paths.workdir.as_str()).join(tmp_import.as_str());
+                    if !tmp_path.exists() {
+                        panic!("File not found: {}", import);
+                    }
+
+                    import = tmp_import;
+                    path = tmp_path;
                 }
                 if !path.exists() {
                     panic!("File not found: {}", import);
