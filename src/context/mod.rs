@@ -162,17 +162,28 @@ impl Context {
         asset_path.to_str().unwrap().to_string()
     }
 
-    pub fn use_asset(&self, path: &str) -> String {
+    pub fn use_asset(&self, path: &str, literal: bool) -> String {
         let asset_folder = self.asset_folder();
 
-        let uuid = uuid::Uuid::new_v4();
-        let name = Path::new(path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or_else(|| {
-                panic!("Failed to get file name from path: {}", path);
-            });
-        let mut asset_path = asset_folder.join(format!("{}-{}", uuid, name));
+        let mut asset_path = if literal {
+            let name = Path::new(path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_else(|| {
+                    panic!("Failed to get file name from path: {}", path);
+                });
+            asset_folder.join(name)
+        } else {
+            let uuid = uuid::Uuid::new_v4();
+            let name = Path::new(path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_else(|| {
+                    panic!("Failed to get file name from path: {}", path);
+                });
+            asset_folder.join(format!("{}-{}", uuid, name))
+        };
+
         fs::copy(path, &asset_path).unwrap_or_else(|err| {
             panic!("Failed to copy asset file: {}: {}", path, err);
         });

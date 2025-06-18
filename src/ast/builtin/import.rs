@@ -6,11 +6,23 @@ use crate::resolver::File;
 use std::path::Path;
 
 pub fn builtin_use(ctx: &Context, _: &Vec<Statement>, inputs: &Vec<Value>, _: &mut Scope) -> Value {
-    if inputs.len() != 1 {
+    if inputs.len() == 0 {
         panic!(
-            "Expected exactly one argument for 'use', got {}",
+            "Expected atleast one argument for 'use', got {}",
             inputs.len()
         );
+    }
+
+    let mut use_literal = false;
+    if inputs.len() >= 2 {
+        if let Value::Bool(b) = &inputs[1] {
+            use_literal = *b;
+        } else {
+            panic!(
+                "Expected a boolean argument for 'use', got {}",
+                inputs[1].get_type()
+            );
+        }
     }
 
     match &inputs[0] {
@@ -60,7 +72,7 @@ pub fn builtin_use(ctx: &Context, _: &Vec<Statement>, inputs: &Vec<Value>, _: &m
                     Value::Str(path)
                 }
                 _ => {
-                    let path = ctx.use_asset(path.to_str().unwrap());
+                    let path = ctx.use_asset(path.to_str().unwrap(), use_literal);
                     Value::Str(path)
                 }
             }
