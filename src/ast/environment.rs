@@ -18,6 +18,13 @@ pub enum Value {
         Type,
         Vec<Statement>,
     ),
+    ScopedFunction(
+        Scope,
+        fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        Vec<Statement>,
+        Type,
+        Vec<Statement>,
+    ),
     Nil,
 }
 
@@ -31,6 +38,7 @@ impl Value {
             Value::Element(node) => node.render(ctx, scope),
             Value::ScopedElement(scope, element) => element.render(ctx, &mut scope.clone()),
             Value::Function(..) => todo!(),
+            Value::ScopedFunction(..) => todo!(),
             Value::Nil => "nil".to_string(),
         }
     }
@@ -44,6 +52,7 @@ impl Value {
             Value::Element(_) => Type::Element,
             Value::ScopedElement(_, _) => Type::Element,
             Value::Function(..) => Type::Function,
+            Value::ScopedFunction(..) => Type::Function,
             Value::Nil => Type::Nil,
         }
     }
@@ -75,8 +84,9 @@ impl Display for Value {
             Value::Float(n) => write!(f, "float({})", n),
             Value::Bool(b) => write!(f, "bool({})", b),
             Value::Element(_) => write!(f, "element()"),
-            Value::Function(..) => write!(f, "function()"),
             Value::ScopedElement(_, _) => write!(f, "scoped_element()"),
+            Value::Function(..) => write!(f, "function()"),
+            Value::ScopedFunction(..) => write!(f, "scoped_function()"),
             Value::Nil => write!(f, "nil"),
         }
     }
@@ -104,6 +114,7 @@ impl Type {
             (Type::Element, Value::Element(_)) => true,
             (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
+            (Type::Function, Value::ScopedFunction(..)) => true,
             (_, Value::Nil) => true,
             (Type::Any, _) => true,
             _ => false,

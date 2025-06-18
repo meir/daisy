@@ -31,6 +31,13 @@ impl Expression {
                 // to keep the scope that the current element is in so that the element can render
                 // properly without missing variables
                 Value::Element(element) => Value::ScopedElement(scope.clone(), element.clone()),
+                Value::Function(func, body, return_type, params) => Value::ScopedFunction(
+                    scope.clone(),
+                    func.clone(),
+                    body.clone(),
+                    return_type.clone(),
+                    params.clone(),
+                ),
                 _ => value.clone(),
             },
             Expression::Call(name, args) => {
