@@ -10,7 +10,7 @@ str css = use("assets/main.scss")
 
 return : html {
   head { 
-    title > @{title}
+    title > @{title.real}
     link rel="stylesheet" href=@{css};
   }
   body {

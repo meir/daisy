@@ -3,6 +3,7 @@ use crate::ast::node::Node;
 use crate::context::Context;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::ops::Deref;
 
 #[derive(Clone)]
 pub enum Value {
@@ -25,6 +26,7 @@ pub enum Value {
         Type,
         Vec<Statement>,
     ),
+    Table(Type, Type, Scope),
     Nil,
 }
 
@@ -39,6 +41,7 @@ impl Value {
             Value::ScopedElement(scope, element) => element.render(ctx, &mut scope.clone()),
             Value::Function(..) => todo!(),
             Value::ScopedFunction(..) => todo!(),
+            Value::Table(..) => todo!(),
             Value::Nil => "nil".to_string(),
         }
     }
@@ -53,6 +56,7 @@ impl Value {
             Value::ScopedElement(_, _) => Type::Element,
             Value::Function(..) => Type::Function,
             Value::ScopedFunction(..) => Type::Function,
+            Value::Table(x, y, ..) => Type::Table(x.clone().into(), y.clone().into()),
             Value::Nil => Type::Nil,
         }
     }
@@ -87,12 +91,13 @@ impl Display for Value {
             Value::ScopedElement(_, _) => write!(f, "scoped_element()"),
             Value::Function(..) => write!(f, "function()"),
             Value::ScopedFunction(..) => write!(f, "scoped_function()"),
+            Value::Table(..) => write!(f, "table()"),
             Value::Nil => write!(f, "nil"),
         }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub enum Type {
     Str,
     Num,
@@ -100,6 +105,7 @@ pub enum Type {
     Bool,
     Element,
     Function,
+    Table(Box<Type>, Box<Type>),
     Nil,
     Any, // not usable in the language, but needed to return any type using "use"
 }
@@ -115,6 +121,9 @@ impl Type {
             (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
             (Type::Function, Value::ScopedFunction(..)) => true,
+            (Type::Table(x0, y0, ..), Value::Table(x1, y1, ..)) => {
+                x0.deref() == x1.deref() && y0.deref() == y1.deref()
+            }
             (_, Value::Nil) => true,
             (Type::Any, _) => true,
             _ => false,
@@ -131,6 +140,7 @@ impl Display for Type {
             Type::Bool => write!(f, "Boolean"),
             Type::Element => write!(f, "Element"),
             Type::Function => write!(f, "Function"),
+            Type::Table(..) => write!(f, "Table"),
             Type::Nil => write!(f, "Nil"),
             Type::Any => write!(f, "Any"),
         }

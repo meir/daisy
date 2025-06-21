@@ -8,7 +8,7 @@ use crate::ast::statement::Statement;
 
 grammar;
 
-pub Daisy: Vec<Statement> = {
+pub Daisy: (Vec<Statement>) = {
   <body:Statement*> => body,
 };
 
@@ -64,7 +64,13 @@ Factor: Expression = {
 Term: Expression = {
   "(" <Expression> ")",
   <v:Value> => Expression::Value(v),
-  <id:Identifier> => Expression::Identifier(id),
+  <id:Identifier> <sub:("."<Identifier>)*> => {
+    let mut path = vec![id];
+    for s in sub {
+      path.push(s);
+    }
+    Expression::Identifier(path)
+  },
   <s:Script> => Expression::Script(s),
   ExpressionCall,
 };

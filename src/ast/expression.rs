@@ -7,7 +7,7 @@ use crate::{ast::environment::Value, context::Context};
 pub enum Expression {
     Value(Value),
     Call(String, Vec<Expression>),
-    Identifier(String),
+    Identifier(Vec<String>),
     Addition(Box<Expression>, Box<Expression>),
     Subtraction(Box<Expression>, Box<Expression>),
     Division(Box<Expression>, Box<Expression>),
@@ -47,10 +47,14 @@ impl Expression {
                     .unwrap_or_else(|| panic!("Function '{}' not defined", name));
                 call_function(ctx, &value, args, scope)
             }
-            Expression::Identifier(name) => scope
-                .get(name)
-                .cloned()
-                .unwrap_or_else(|| panic!("Variable '{}' not defined in the current scope", name)),
+            Expression::Identifier(name) => {
+                scope.get(name.get(0).unwrap()).cloned().unwrap_or_else(|| {
+                    panic!(
+                        "Variable '{}' not defined in the current scope",
+                        name.get(0).unwrap()
+                    )
+                })
+            }
             Expression::Addition(left, right) => {
                 let left_value = left.to_value(ctx, scope);
                 let right_value = right.to_value(ctx, scope);
