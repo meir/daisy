@@ -9,7 +9,7 @@ fn build_command() -> Command {
         .subcommand(Command::new("build").about("Build the site"))
 }
 
-pub fn run(ctx: &Context) {
+pub fn run(ctx: &mut Context) {
     let matches = build_command().get_matches();
 
     match matches.subcommand() {

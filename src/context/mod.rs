@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::grammar::DaisyParser;
+use crate::{ast::environment::Scope, grammar::DaisyParser, resolver::file::File};
 use log::warn;
 use serde::Deserialize;
 

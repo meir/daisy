@@ -20,7 +20,7 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn process(&self, ctx: &Context, scope: &mut Scope) -> Result<(bool, Value), Error> {
+    pub fn process(&self, ctx: &mut Context, scope: &mut Scope) -> Result<(bool, Value), Error> {
         match self {
             Statement::Call(name, args) => {
                 let value = scope

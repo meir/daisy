@@ -7,7 +7,7 @@ use super::{
 };
 
 pub fn call_function(
-    ctx: &Context,
+    ctx: &mut Context,
     value: &Value,
     args: &Vec<Expression>,
     scope: &mut Scope,
@@ -40,8 +40,8 @@ pub fn call_function(
 }
 
 fn run_function(
-    ctx: &Context,
-    func: &fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+    ctx: &mut Context,
+    func: &fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
     params: &Vec<Statement>,
     return_type: &Type,
     args: &Vec<Value>,
@@ -82,7 +82,7 @@ fn run_function(
 }
 
 pub fn default_function(
-    ctx: &Context,
+    ctx: &mut Context,
     stmts: &Vec<Statement>,
     _: &Vec<Value>,
     scope: &mut Scope,

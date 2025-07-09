@@ -2,10 +2,15 @@ use crate::ast::environment::{Scope, Value};
 use crate::ast::function::default_function;
 use crate::ast::statement::Statement;
 use crate::context::Context;
-use crate::resolver::File;
+use crate::resolver::file::File;
 use std::path::Path;
 
-pub fn builtin_use(ctx: &Context, _: &Vec<Statement>, inputs: &Vec<Value>, _: &mut Scope) -> Value {
+pub fn builtin_use(
+    ctx: &mut Context,
+    _: &Vec<Statement>,
+    inputs: &Vec<Value>,
+    _: &mut Scope,
+) -> Value {
     if inputs.len() == 0 {
         panic!(
             "Expected atleast one argument for 'use', got {}",
@@ -49,8 +54,10 @@ pub fn builtin_use(ctx: &Context, _: &Vec<Statement>, inputs: &Vec<Value>, _: &m
 
             match path.extension() {
                 Some(ext) if ext == "ds" => {
-                    let mut loaded = File::load_absolute(ctx, path.to_str().unwrap());
-                    default_function(ctx, &loaded.ast, &vec![], &mut loaded.environment)
+                    let loaded = File::load_absolute(ctx, path.to_str().unwrap());
+                    let mut scope = Scope::new();
+                    super::init(&mut scope);
+                    default_function(ctx, &loaded.ast, &vec![], &mut scope)
                 }
                 Some(ext) if ext == "scss" => {
                     let content = std::fs::read_to_string(&path).unwrap_or_else(|_| {

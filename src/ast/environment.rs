@@ -3,7 +3,6 @@ use crate::ast::node::Node;
 use crate::context::Context;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::ops::Deref;
 
 #[derive(Clone)]
 pub enum Value {
@@ -14,24 +13,24 @@ pub enum Value {
     Element(Box<Node>),
     ScopedElement(Scope, Box<Node>),
     Function(
-        fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
         Vec<Statement>,
         Type,
         Vec<Statement>,
     ),
     ScopedFunction(
         Scope,
-        fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
         Vec<Statement>,
         Type,
         Vec<Statement>,
     ),
-    Table(Type, Type, Scope),
+    Table(Scope),
     Nil,
 }
 
 impl Value {
-    pub fn render(&self, ctx: &Context, scope: &mut Scope) -> String {
+    pub fn render(&self, ctx: &mut Context, scope: &mut Scope) -> String {
         match self {
             Value::Str(s) => s.clone(),
             Value::Num(n) => n.to_string(),
@@ -39,9 +38,19 @@ impl Value {
             Value::Bool(b) => b.to_string(),
             Value::Element(node) => node.render(ctx, scope),
             Value::ScopedElement(scope, element) => element.render(ctx, &mut scope.clone()),
-            Value::Function(..) => todo!(),
-            Value::ScopedFunction(..) => todo!(),
-            Value::Table(..) => todo!(),
+            Value::Function(..) => "".into(),
+            Value::ScopedFunction(..) => "".into(),
+            Value::Table(scope) => {
+                let mut scope = scope.clone();
+                let keys = &scope.get_keys();
+                let mut output = String::new();
+                for key in keys {
+                    if let Some(value) = scope.clone().get(&key) {
+                        output.push_str(&value.render(ctx, &mut scope))
+                    }
+                }
+                output
+            }
             Value::Nil => "nil".to_string(),
         }
     }
@@ -56,7 +65,7 @@ impl Value {
             Value::ScopedElement(_, _) => Type::Element,
             Value::Function(..) => Type::Function,
             Value::ScopedFunction(..) => Type::Function,
-            Value::Table(x, y, ..) => Type::Table(x.clone().into(), y.clone().into()),
+            Value::Table(..) => Type::Table,
             Value::Nil => Type::Nil,
         }
     }
@@ -105,7 +114,7 @@ pub enum Type {
     Bool,
     Element,
     Function,
-    Table(Box<Type>, Box<Type>),
+    Table,
     Nil,
     Any, // not usable in the language, but needed to return any type using "use"
 }
@@ -121,9 +130,7 @@ impl Type {
             (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
             (Type::Function, Value::ScopedFunction(..)) => true,
-            (Type::Table(x0, y0, ..), Value::Table(x1, y1, ..)) => {
-                x0.deref() == x1.deref() && y0.deref() == y1.deref()
-            }
+            (Type::Table, Value::Table(..)) => true,
             (_, Value::Nil) => true,
             (Type::Any, _) => true,
             _ => false,
@@ -140,7 +147,7 @@ impl Display for Type {
             Type::Bool => write!(f, "Boolean"),
             Type::Element => write!(f, "Element"),
             Type::Function => write!(f, "Function"),
-            Type::Table(..) => write!(f, "Table"),
+            Type::Table => write!(f, "Table"),
             Type::Nil => write!(f, "Nil"),
             Type::Any => write!(f, "Any"),
         }
@@ -166,6 +173,10 @@ impl Scope {
         for (name, value) in &self.variables[self.current_scope] {
             println!("{}: {} ({})", name, value.1, value.0);
         }
+    }
+
+    pub fn get_keys(&mut self) -> Vec<String> {
+        self.variables[self.current_scope].keys().cloned().collect()
     }
 
     pub fn sync_scope(&mut self) {
@@ -195,13 +206,13 @@ impl Scope {
     pub fn define_builtin_function(
         &mut self,
         name: String,
-        func: fn(&Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
+        func: fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
         return_type: Type,
     ) {
         self.define(
             Type::Function,
             name,
-            Value::Function(func, vec![], return_type, vec![]),
+            Value::ScopedFunction(self.clone(), func, vec![], return_type, vec![]),
         );
     }
 

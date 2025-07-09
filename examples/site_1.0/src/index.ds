@@ -1,20 +1,31 @@
+meta {
+  str url = "/"
+}
+
 use("assets/subfolder/cat.png", true)
 
-str title = hello_world()
+table title = {
+  str real = std.format("{} - {}", "Hello world!", url)
+}
 
-func header = use("component/title")
+str css = use("assets/main.scss")
+
+table headers = [
+  : title > @{title.real},
+  : link rel="stylesheet" href=@{css};
+]
+
+func header = use("src/component/title")
 
 str term = $`echo $TERM`
 str cat_pic = use("assets/cat.png")
-str css = use("assets/main.scss")
 
 return : html {
   head { 
-    title > @{title.real}
-    link rel="stylesheet" href=@{css};
+    @{headers}
   }
   body {
-    @{header("hello there!")}
+    @{header(std.hello_world())}
     div > @{term}
     div > img src=@{cat_pic} alt="A cute cat";
   }

@@ -1,4 +1,8 @@
 
+meta {
+  str url = "/test"
+}
+
 str title = "Website 1.0"
 
 str line_content = "This is a list item"

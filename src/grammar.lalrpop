@@ -8,9 +8,16 @@ use crate::ast::statement::Statement;
 
 grammar;
 
-pub Daisy: (Vec<Statement>) = {
-  <body:Statement*> => body,
+pub Daisy: (Expression, Vec<Statement>) = {
+  <body:Statement*> => (Expression::Table(vec![]), body),
+  <meta:Meta> <body:Statement*> => (meta, body),
 };
+
+// Meta
+
+Meta: Expression = {
+  "meta" "{" <def:Definition*> "}" => Expression::Table(def),
+}
 
 // Types / Identifiers
 
@@ -23,6 +30,7 @@ Type: Type = {
   "bool" => Type::Bool,
   "element" => Type::Element,
   "func" => Type::Function,
+  "table" => Type::Table,
 }
 
 Str: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
@@ -45,6 +53,7 @@ Expression: Expression = {
   <l:Expression> "<=" <r:Calc> => Expression::LessThanOrEqual(Box::new(l), Box::new(r)),
   <l:Expression> ">" <r:Calc> => Expression::GreaterThan(Box::new(l), Box::new(r)),
   <l:Expression> ">=" <r:Calc> => Expression::GreaterThanOrEqual(Box::new(l), Box::new(r)),
+  ExpressionCall,
   Calc,
 };
 
@@ -64,6 +73,15 @@ Factor: Expression = {
 Term: Expression = {
   "(" <Expression> ")",
   <v:Value> => Expression::Value(v),
+  "{" <def:Definition*> "}" => Expression::Table(def),
+  "[" <args:(<Expression> ",")*> <arg:Expression?> "]" => {
+    let mut args = args;
+    if let Some(a) = arg {
+      args.push(a);
+    }
+    let args: Vec<Box<Expression>> = args.into_iter().map(|e| e.into()).collect();
+    Expression::Array(args)
+  },
   <id:Identifier> <sub:("."<Identifier>)*> => {
     let mut path = vec![id];
     for s in sub {
@@ -72,7 +90,6 @@ Term: Expression = {
     Expression::Identifier(path)
   },
   <s:Script> => Expression::Script(s),
-  ExpressionCall,
 };
 
 Script: String = "$"<s:r#"`([^`\\]|\\.)*`"#> => s[1..s.len()-1].to_string();
@@ -88,12 +105,12 @@ Value: Value = {
 }
 
 ExpressionCall: Expression = {
-  <n:Identifier> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
+  <e:Expression> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
     let mut args = args;
     if let Some(a) = arg {
       args.push(a);
     }
-    Expression::Call(n, args)
+    Expression::Call(e.into(), args)
   },
 }
 

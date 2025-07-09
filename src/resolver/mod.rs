@@ -1,111 +1,69 @@
-use crate::ast::builtin;
-use crate::ast::environment::Scope;
-use crate::ast::statement::Statement;
+use std::path::Path;
+
+use crate::ast::environment::{Scope, Value};
+use file::File;
+use walkdir::WalkDir;
+
 use crate::context::Context;
-use lalrpop_util::ParseError;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
 
-pub struct File {
-    pub src: PathBuf,
-    pub content: String,
-    pub environment: Scope,
+pub mod file;
 
-    pub ast: Vec<Statement>,
+pub enum Resource {
+    File(File, Scope),
+    SCSS(String),
+    Other(String, String),
 }
 
-impl File {
-    #[allow(dead_code)]
-    pub fn load(ctx: &Context, file: &str) -> File {
-        let src = Path::new(ctx.config.paths.workdir.as_str()).join(file);
-        Self::load_absolute(ctx, src.to_str().unwrap())
-    }
+pub struct Resolver {
+    resources: Vec<Resource>,
+}
 
-    pub fn load_absolute<P: AsRef<Path>>(ctx: &Context, src: P) -> File {
-        let content = fs::read_to_string(&src).unwrap_or_else(|_| {
-            panic!("Failed to read file: {:?}", src.as_ref());
-        });
-        let ast = ctx
-            .parser
-            .parse(content.as_str())
-            .unwrap_or_else(|err| match err {
-                ParseError::InvalidToken { location } => {
-                    let (line, column) = Self::position_to_line_column(&content, location);
-                    panic!(
-                        "Invalid token at {}:{} in file {}",
-                        line,
-                        column,
-                        src.as_ref().display()
-                    );
-                }
-                ParseError::UnrecognizedEof { location, expected } => {
-                    let (line, column) = Self::position_to_line_column(&content, location);
-                    panic!(
-                        "Unrecognized EOF at {}:{} in file {}. Expected: {:?}",
-                        line,
-                        column,
-                        src.as_ref().display(),
-                        expected
-                    );
-                }
-                ParseError::UnrecognizedToken {
-                    token: (location, token, _),
-                    expected,
-                } => {
-                    let (line, column) = Self::position_to_line_column(&content, location);
-                    panic!(
-                        "Unrecognized token '{}' at {}:{} in file {}. Expected: {:?}",
-                        token,
-                        line,
-                        column,
-                        src.as_ref().display(),
-                        expected
-                    );
-                }
-                ParseError::ExtraToken { token } => {
-                    let (line, column) = Self::position_to_line_column(&content, token.0);
-                    panic!(
-                        "Extra token '{}' at {}:{} in file {}",
-                        token.1,
-                        line,
-                        column,
-                        src.as_ref().display(),
-                    );
-                }
-                ParseError::User { error } => {
-                    panic!("User error: {} in file {}", error, src.as_ref().display());
-                }
-            });
-
-        let mut file = File {
-            src: src.as_ref().to_path_buf(),
-            content,
-            environment: Scope::new(),
-            ast,
-        };
-
-        builtin::init(&mut file);
-
-        file
-    }
-
-    fn position_to_line_column(input: &str, pos: usize) -> (usize, usize) {
-        let mut line = 1;
-        let mut last_line_start = 0;
-
-        for (i, c) in input.char_indices() {
-            if i >= pos {
-                break;
-            }
-            if c == '\n' {
-                line += 1;
-                last_line_start = i + 1;
-            }
+impl Resolver {
+    pub fn new() -> Self {
+        Self {
+            resources: Vec::new(),
         }
+    }
 
-        let column = pos - last_line_start + 1;
-        (line, column)
+    pub fn load_dir(&mut self, ctx: &mut Context) {
+        WalkDir::new(format!(
+            "{}/{}",
+            ctx.config.paths.workdir, ctx.config.paths.pages
+        ))
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            entry.file_type().is_file() && entry.path().extension() == Some("ds".as_ref())
+        })
+        .for_each(|entry| {
+            let path = entry.path();
+            let file = file::File::load_absolute(ctx, path.to_str().unwrap());
+            let value = file.meta.to_value(ctx, &mut Scope::new());
+            let table = match value {
+                Value::Table(scope) => scope,
+                _ => panic!("Meta must be a table"),
+            };
+            self.resources.push(Resource::File(file, table));
+        });
+    }
+
+    pub fn len(&self) -> usize {
+        self.resources.len()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Resource> {
+        self.resources.get(index)
+    }
+
+    pub fn get_file(&mut self, ctx: &mut Context, src: String) -> Result<&mut Resource, String> {
+        let src = Path::new(ctx.config.paths.workdir.as_str()).join(src);
+        if let Some(rs) = self.resources.iter_mut().find(|rs| match rs {
+            Resource::File(file, _) => file.src == src,
+            _ => false,
+        }) {
+            Ok(rs)
+        } else {
+            panic!("File not found: {}", src.to_str().unwrap());
+        }
     }
 }

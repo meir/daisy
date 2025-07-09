@@ -11,7 +11,7 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn render(&self, ctx: &Context, scope: &mut Scope) -> String {
+    pub fn render(&self, ctx: &mut Context, scope: &mut Scope) -> String {
         match self {
             Node::Element(element) => element.render(ctx, scope),
             Node::Text(text) => text.clone(),

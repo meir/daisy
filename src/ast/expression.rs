@@ -1,12 +1,16 @@
-use std::process::Command;
+use std::{fmt, process::Command};
 
-use super::{environment::Scope, function::call_function};
+use super::{
+    environment::{Scope, Type},
+    function::call_function,
+    statement::Statement,
+};
 use crate::{ast::environment::Value, context::Context};
 
 #[derive(Clone)]
 pub enum Expression {
     Value(Value),
-    Call(String, Vec<Expression>),
+    Call(Box<Expression>, Vec<Expression>),
     Identifier(Vec<String>),
     Addition(Box<Expression>, Box<Expression>),
     Subtraction(Box<Expression>, Box<Expression>),
@@ -21,11 +25,75 @@ pub enum Expression {
     GreaterThan(Box<Expression>, Box<Expression>),
     GreaterThanOrEqual(Box<Expression>, Box<Expression>),
     Script(String),
+    Table(Vec<Statement>),
+    Array(Vec<Box<Expression>>),
     Nil,
 }
 
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expression::Value(..) => write!(f, "Value"),
+            Expression::Call(..) => {
+                write!(f, "Call()")
+            }
+            Expression::Identifier(name) => {
+                write!(f, "Identifier({})", name.join("."))
+            }
+            Expression::Addition(left, right) => {
+                write!(f, "Addition({}, {})", left, right)
+            }
+            Expression::Subtraction(left, right) => {
+                write!(f, "Subtraction({}, {})", left, right)
+            }
+            Expression::Multiplication(left, right) => {
+                write!(f, "Multiplication({}, {})", left, right)
+            }
+            Expression::Division(left, right) => {
+                write!(f, "Division({}, {})", left, right)
+            }
+            Expression::Equal(left, right) => {
+                write!(f, "Equal({}, {})", left, right)
+            }
+            Expression::NotEqual(left, right) => {
+                write!(f, "NotEqual({}, {})", left, right)
+            }
+            Expression::Or(left, right) => {
+                write!(f, "Or({}, {})", left, right)
+            }
+            Expression::And(left, right) => {
+                write!(f, "And({}, {})", left, right)
+            }
+            Expression::LessThan(left, right) => {
+                write!(f, "LessThan({}, {})", left, right)
+            }
+            Expression::LessThanOrEqual(left, right) => {
+                write!(f, "LessThanOrEqual({}, {})", left, right)
+            }
+            Expression::GreaterThan(left, right) => {
+                write!(f, "GreaterThan({}, {})", left, right)
+            }
+            Expression::GreaterThanOrEqual(left, right) => {
+                write!(f, "GreaterThanOrEqual({}, {})", left, right)
+            }
+            Expression::Script(script) => {
+                write!(f, "Script({})", script)
+            }
+            Expression::Table(..) => {
+                write!(f, "Table()")
+            }
+            Expression::Array(..) => {
+                write!(f, "Array()")
+            }
+            Expression::Nil => {
+                write!(f, "Nil")
+            }
+        }
+    }
+}
+
 impl Expression {
-    pub fn to_value(&self, ctx: &Context, scope: &mut Scope) -> Value {
+    pub fn to_value(&self, ctx: &mut Context, scope: &mut Scope) -> Value {
         match self {
             Expression::Value(value) => match value {
                 // to keep the scope that the current element is in so that the element can render
@@ -40,20 +108,25 @@ impl Expression {
                 ),
                 _ => value.clone(),
             },
-            Expression::Call(name, args) => {
-                let value = scope
-                    .get(name)
-                    .cloned()
-                    .unwrap_or_else(|| panic!("Function '{}' not defined", name));
+            Expression::Call(expr, args) => {
+                let value = expr.to_value(ctx, scope);
                 call_function(ctx, &value, args, scope)
             }
             Expression::Identifier(name) => {
-                scope.get(name.get(0).unwrap()).cloned().unwrap_or_else(|| {
-                    panic!(
-                        "Variable '{}' not defined in the current scope",
-                        name.get(0).unwrap()
-                    )
-                })
+                let table = Value::Table(scope.clone());
+                let mut value: Option<&Value> = Some(&table);
+                for part in name {
+                    value = match value {
+                        Some(Value::Table(table)) => table.get(part),
+                        _ => None,
+                    };
+                }
+
+                if let Some(val) = value {
+                    val.clone()
+                } else {
+                    Value::Nil
+                }
             }
             Expression::Addition(left, right) => {
                 let left_value = left.to_value(ctx, scope);
@@ -212,6 +285,40 @@ impl Expression {
                         right_value.get_type()
                     ),
                 }
+            }
+            Expression::Table(statements) => {
+                let mut table_scope = Scope::new();
+                for statement in statements {
+                    if let Statement::Definition(type_, name, expr) = statement {
+                        let value = expr.to_value(ctx, scope);
+                        table_scope.define(type_.clone(), name.clone(), value);
+                    } else {
+                        panic!("Only definitions are allowed in table expressions");
+                    }
+                }
+                Value::Table(table_scope)
+            }
+            Expression::Array(expressions) => {
+                let values: Vec<Value> = expressions
+                    .iter()
+                    .map(|expr| expr.to_value(ctx, scope))
+                    .collect();
+                let mut array_scope = Scope::new();
+                for (i, value) in values.iter().enumerate() {
+                    array_scope.define(value.get_type(), i.to_string(), value.clone());
+                }
+                array_scope.define_builtin_function(
+                    "get".into(),
+                    |_, _, inputs, scope| -> Value {
+                        scope
+                            .get(&inputs[0].to_string())
+                            .cloned()
+                            .unwrap_or(Value::Nil)
+                    },
+                    Type::Any,
+                );
+
+                Value::Table(array_scope)
             }
             //later
             Expression::Nil => Value::Nil,

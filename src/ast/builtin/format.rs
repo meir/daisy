@@ -3,7 +3,7 @@ use crate::ast::statement::Statement;
 use crate::context::Context;
 
 pub fn builtin_format(
-    ctx: &Context,
+    ctx: &mut Context,
     _: &Vec<Statement>,
     inputs: &Vec<Value>,
     scope: &mut Scope,

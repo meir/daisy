@@ -1,24 +1,28 @@
-use crate::ast::environment::Value;
+use crate::ast::builtin;
 use crate::ast::function::default_function;
-use crate::context::Context;
-use crate::resolver::File;
-use walkdir::WalkDir;
+use crate::resolver::{Resolver, Resource};
+use crate::{ast::environment::Value, context::Context};
 
-pub fn build(ctx: &Context) {
-    WalkDir::new(format!(
-        "{}/{}",
-        ctx.config.paths.workdir, ctx.config.paths.pages
-    ))
-    .into_iter()
-    .filter_map(|entry| entry.ok())
-    .filter(|entry| entry.file_type().is_file() && entry.path().extension() == Some("ds".as_ref()))
-    .for_each(|entry| {
-        let path = entry.path();
-        let mut file = File::load_absolute(ctx, path.to_str().unwrap());
-        let ast = file.ast.clone();
-        let render: Value = default_function(ctx, &ast, &vec![], &mut file.environment);
-        let content = &render.render(ctx, &mut file.environment);
-        let output = ctx.save_page(path.to_str().unwrap(), content);
-        println!("Built {} -> {}", path.to_str().unwrap(), output);
-    });
+pub fn build(ctx: &mut Context) {
+    let mut resolver = Resolver::new();
+    resolver.load_dir(ctx);
+
+    for i in 0..resolver.len() {
+        let rs = resolver.get(i).unwrap();
+        match rs {
+            Resource::File(file, meta) => {
+                if meta.get("url").is_none() {
+                    continue;
+                }
+
+                let env = &mut meta.clone();
+                builtin::init(env);
+                let render: Value = default_function(ctx, &file.ast, &vec![], env);
+                let content = &render.render(ctx, env);
+                let output = ctx.save_page(file.src.to_str().unwrap(), content);
+                println!("Built {} -> {}", file.src.to_str().unwrap(), output);
+            }
+            _ => todo!(),
+        }
+    }
 }

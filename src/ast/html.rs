@@ -40,7 +40,7 @@ impl Element {
         }
     }
 
-    pub fn render(&self, ctx: &Context, scope: &mut Scope) -> String {
+    pub fn render(&self, ctx: &mut Context, scope: &mut Scope) -> String {
         let attributes: HashMap<String, String> = self
             .attributes
             .iter()
