@@ -30,68 +30,6 @@ pub enum Expression {
     Nil,
 }
 
-impl fmt::Display for Expression {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Expression::Value(..) => write!(f, "Value"),
-            Expression::Call(..) => {
-                write!(f, "Call()")
-            }
-            Expression::Identifier(name) => {
-                write!(f, "Identifier({})", name.join("."))
-            }
-            Expression::Addition(left, right) => {
-                write!(f, "Addition({}, {})", left, right)
-            }
-            Expression::Subtraction(left, right) => {
-                write!(f, "Subtraction({}, {})", left, right)
-            }
-            Expression::Multiplication(left, right) => {
-                write!(f, "Multiplication({}, {})", left, right)
-            }
-            Expression::Division(left, right) => {
-                write!(f, "Division({}, {})", left, right)
-            }
-            Expression::Equal(left, right) => {
-                write!(f, "Equal({}, {})", left, right)
-            }
-            Expression::NotEqual(left, right) => {
-                write!(f, "NotEqual({}, {})", left, right)
-            }
-            Expression::Or(left, right) => {
-                write!(f, "Or({}, {})", left, right)
-            }
-            Expression::And(left, right) => {
-                write!(f, "And({}, {})", left, right)
-            }
-            Expression::LessThan(left, right) => {
-                write!(f, "LessThan({}, {})", left, right)
-            }
-            Expression::LessThanOrEqual(left, right) => {
-                write!(f, "LessThanOrEqual({}, {})", left, right)
-            }
-            Expression::GreaterThan(left, right) => {
-                write!(f, "GreaterThan({}, {})", left, right)
-            }
-            Expression::GreaterThanOrEqual(left, right) => {
-                write!(f, "GreaterThanOrEqual({}, {})", left, right)
-            }
-            Expression::Script(script) => {
-                write!(f, "Script({})", script)
-            }
-            Expression::Table(..) => {
-                write!(f, "Table()")
-            }
-            Expression::Array(..) => {
-                write!(f, "Array()")
-            }
-            Expression::Nil => {
-                write!(f, "Nil")
-            }
-        }
-    }
-}
-
 impl Expression {
     pub fn to_value(&self, ctx: &mut Context, scope: &mut Scope) -> Value {
         match self {
