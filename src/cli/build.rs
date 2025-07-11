@@ -1,26 +1,23 @@
-use crate::ast::builtin;
-use crate::ast::function::default_function;
-use crate::resolver::{Resolver, Resource};
-use crate::{ast::environment::Value, context::Context};
+use crate::context::Context;
+use crate::resolver::{self, Resource};
 
 pub fn build(ctx: &mut Context) {
-    let mut resolver = Resolver::new();
-    resolver.load_dir(ctx);
+    resolver::load_dir(ctx);
 
-    for i in 0..resolver.len() {
-        let rs = resolver.get(i).unwrap();
-        match rs {
-            Resource::File(file, meta) => {
-                if meta.get("url").is_none() {
+    for rs in resolver::get_all(ctx) {
+        match rs.as_ref() {
+            Resource::File(file, env, render) => {
+                if env.get("url").is_none() {
                     continue;
                 }
 
-                let env = &mut meta.clone();
-                builtin::init(env);
-                let render: Value = default_function(ctx, &file.ast, &vec![], env);
-                let content = &render.render(ctx, env);
-                let output = ctx.save_page(file.src.to_str().unwrap(), content);
+                let content = &render.render(ctx, &mut env.clone());
+                let output = ctx.save_content(file.output_path(ctx).as_str(), content);
                 println!("Built {} -> {}", file.src.to_str().unwrap(), output);
+            }
+            Resource::SCSS(path, content) => {
+                let output = ctx.save_content(path, content);
+                println!("Built SCSS {} -> {}", path, output);
             }
             _ => todo!(),
         }

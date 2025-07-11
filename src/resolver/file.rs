@@ -1,12 +1,14 @@
 use crate::ast::expression::Expression;
 use crate::ast::statement::Statement;
 use crate::context::Context;
+use crate::grammar::Token;
 use lalrpop_util::ParseError;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 
+#[derive(Clone)]
 pub struct File {
     pub src: PathBuf,
     pub content: String,
@@ -29,54 +31,7 @@ impl File {
         let ast = ctx
             .parser
             .parse(content.as_str())
-            .unwrap_or_else(|err| match err {
-                ParseError::InvalidToken { location } => {
-                    let (line, column) = Self::position_to_line_column(&content, location);
-                    panic!(
-                        "Invalid token at {}:{} in file {}",
-                        line,
-                        column,
-                        src.as_ref().display()
-                    );
-                }
-                ParseError::UnrecognizedEof { location, expected } => {
-                    let (line, column) = Self::position_to_line_column(&content, location);
-                    panic!(
-                        "Unrecognized EOF at {}:{} in file {}. Expected: {:?}",
-                        line,
-                        column,
-                        src.as_ref().display(),
-                        expected
-                    );
-                }
-                ParseError::UnrecognizedToken {
-                    token: (location, token, _),
-                    expected,
-                } => {
-                    let (line, column) = Self::position_to_line_column(&content, location);
-                    panic!(
-                        "Unrecognized token '{}' at {}:{} in file {}. Expected: {:?}",
-                        token,
-                        line,
-                        column,
-                        src.as_ref().display(),
-                        expected
-                    );
-                }
-                ParseError::ExtraToken { token } => {
-                    let (line, column) = Self::position_to_line_column(&content, token.0);
-                    panic!(
-                        "Extra token '{}' at {}:{} in file {}",
-                        token.1,
-                        line,
-                        column,
-                        src.as_ref().display(),
-                    );
-                }
-                ParseError::User { error } => {
-                    panic!("User error: {} in file {}", error, src.as_ref().display());
-                }
-            });
+            .unwrap_or_else(|err| Self::error_message(src.as_ref(), err, &content));
 
         File {
             src: src.as_ref().to_path_buf(),
@@ -85,6 +40,17 @@ impl File {
             meta: ast.0,
             ast: ast.1,
         }
+    }
+
+    pub fn output_path(&self, ctx: &Context) -> String {
+        let path = self.src.to_str().unwrap();
+        let src = Path::new(path).strip_prefix(format!(
+            "{}/{}",
+            ctx.config.paths.workdir, ctx.config.paths.pages
+        ));
+        let output = ctx.get_output_path(src.unwrap().to_str().unwrap()).unwrap();
+
+        output.to_str().unwrap().to_string()
     }
 
     fn position_to_line_column(input: &str, pos: usize) -> (usize, usize) {
@@ -103,5 +69,56 @@ impl File {
 
         let column = pos - last_line_start + 1;
         (line, column)
+    }
+
+    fn error_message(src: &Path, err: ParseError<usize, Token, &str>, content: &str) -> ! {
+        match err {
+            ParseError::InvalidToken { location } => {
+                let (line, column) = Self::position_to_line_column(&content, location);
+                panic!(
+                    "Invalid token at {}:{} in file {}",
+                    line,
+                    column,
+                    src.display()
+                );
+            }
+            ParseError::UnrecognizedEof { location, expected } => {
+                let (line, column) = Self::position_to_line_column(&content, location);
+                panic!(
+                    "Unrecognized EOF at {}:{} in file {}. Expected: {:?}",
+                    line,
+                    column,
+                    src.display(),
+                    expected
+                );
+            }
+            ParseError::UnrecognizedToken {
+                token: (location, token, _),
+                expected,
+            } => {
+                let (line, column) = Self::position_to_line_column(&content, location);
+                panic!(
+                    "Unrecognized token '{}' at {}:{} in file {}. Expected: {:?}",
+                    token,
+                    line,
+                    column,
+                    src.display(),
+                    expected
+                );
+            }
+            ParseError::ExtraToken { token } => {
+                let (line, column) = Self::position_to_line_column(&content, token.0);
+                panic!(
+                    "Extra token '{}' at {}:{} in file {}",
+                    token.1,
+                    line,
+                    column,
+                    src.display(),
+                );
+            }
+            ParseError::User { error } => {
+                panic!("User error: {} in file {}", error, src.display());
+            }
+        }
     }
 }

@@ -2,7 +2,6 @@ meta {
   str url = "/"
 }
 
-use("assets/subfolder/cat.png", true)
 
 table title = {
   str real = std.format("{} - {}", "Hello world!", url)
@@ -18,7 +17,6 @@ table headers = [
 func header = use("src/component/title")
 
 str term = $`echo $TERM`
-str cat_pic = use("assets/cat.png")
 
 return : html {
   head { 
@@ -27,6 +25,5 @@ return : html {
   body {
     @{header(std.hello_world())}
     div > @{term}
-    div > img src=@{cat_pic} alt="A cute cat";
   }
 }

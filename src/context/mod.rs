@@ -2,14 +2,16 @@ use std::{
     fs,
     io::Error,
     path::{Path, PathBuf},
+    rc::Rc,
 };
 
-use crate::{ast::environment::Scope, grammar::DaisyParser, resolver::file::File};
+use crate::{grammar::DaisyParser, resolver::Resource};
 use log::warn;
 use serde::Deserialize;
 
 pub struct Context {
     pub parser: DaisyParser,
+    pub resources: Vec<Rc<Resource>>,
     pub config: Config,
 }
 
@@ -81,35 +83,40 @@ impl Context {
 
         Context {
             parser: DaisyParser::new(),
+            resources: vec![],
             config: cfg,
         }
     }
 
-    pub fn get_page_output_path(&self, src: &str) -> Result<PathBuf, Error> {
+    pub fn get_output_path(&self, src: &str) -> Result<PathBuf, Error> {
         let mut path = Path::new(src);
         let name = path.file_stem().unwrap();
         let pathbuf = path.parent().unwrap().join(name);
         path = pathbuf.as_path();
-        if name == "index" {
-            path = path.parent().unwrap();
-        }
 
-        std::path::absolute(&format!(
-            "{}/{}/{}/index.html",
-            self.config.paths.workdir,
-            self.config.paths.output,
-            path.to_str().unwrap(),
-        ))
+        if path.extension().is_some() {
+            std::path::absolute(&format!(
+                "{}/{}/{}",
+                self.config.paths.workdir,
+                self.config.paths.output,
+                path.to_str().unwrap(),
+            ))
+        } else {
+            if name == "index" {
+                path = path.parent().unwrap();
+            }
+
+            std::path::absolute(&format!(
+                "{}/{}/{}/index.html",
+                self.config.paths.workdir,
+                self.config.paths.output,
+                path.to_str().unwrap(),
+            ))
+        }
     }
 
-    pub fn save_page(&self, path: &str, content: &str) -> String {
-        let src = Path::new(path).strip_prefix(format!(
-            "{}/{}",
-            self.config.paths.workdir, self.config.paths.pages
-        ));
-        let output_path = self
-            .get_page_output_path(src.unwrap().to_str().unwrap())
-            .unwrap();
+    pub fn save_content(&self, path: &str, content: &str) -> String {
+        let output_path = Path::new(path);
 
         fs::create_dir_all(output_path.parent().unwrap()).unwrap_or_else(|err| {
             panic!("Failed to create directory: {}: {}", path, err);
@@ -120,78 +127,5 @@ impl Context {
         });
 
         output_path.to_str().unwrap().to_string()
-    }
-
-    pub fn asset_folder(&self) -> PathBuf {
-        let asset_folder = format!(
-            "{}/{}/{}",
-            self.config.paths.workdir, self.config.paths.output, self.config.assets.folder
-        );
-        let asset_folder = Path::new(asset_folder.as_str());
-
-        if !asset_folder.exists() {
-            fs::create_dir_all(asset_folder).unwrap_or_else(|err| {
-                panic!(
-                    "Failed to create asset directory: {}: {}",
-                    asset_folder.display(),
-                    err
-                );
-            });
-        }
-
-        asset_folder.to_path_buf()
-    }
-
-    pub fn save_asset(&self, name: &str, content: &str) -> String {
-        let asset_folder = self.asset_folder();
-
-        let uuid = uuid::Uuid::new_v4();
-        let mut asset_path = asset_folder.join(format!("{}-{}", uuid, name));
-        fs::write(&asset_path, content).unwrap_or_else(|err| {
-            panic!(
-                "Failed to write asset file: {}: {}",
-                asset_path.display(),
-                err
-            );
-        });
-
-        let prefix = format!("{}/{}", self.config.paths.workdir, self.config.paths.output);
-        asset_path = asset_path.strip_prefix(prefix).unwrap().to_path_buf();
-        asset_path = PathBuf::from(format!("/{}", asset_path.to_str().unwrap()));
-
-        asset_path.to_str().unwrap().to_string()
-    }
-
-    pub fn use_asset(&self, path: &str, literal: bool) -> String {
-        let asset_folder = self.asset_folder();
-
-        let mut asset_path = if literal {
-            let name = Path::new(path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or_else(|| {
-                    panic!("Failed to get file name from path: {}", path);
-                });
-            asset_folder.join(name)
-        } else {
-            let uuid = uuid::Uuid::new_v4();
-            let name = Path::new(path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or_else(|| {
-                    panic!("Failed to get file name from path: {}", path);
-                });
-            asset_folder.join(format!("{}-{}", uuid, name))
-        };
-
-        fs::copy(path, &asset_path).unwrap_or_else(|err| {
-            panic!("Failed to copy asset file: {}: {}", path, err);
-        });
-
-        let prefix = format!("{}/{}", self.config.paths.workdir, self.config.paths.output);
-        asset_path = asset_path.strip_prefix(prefix).unwrap().to_path_buf();
-        asset_path = PathBuf::from(format!("/{}", asset_path.to_str().unwrap()));
-
-        asset_path.to_str().unwrap().to_string()
     }
 }
