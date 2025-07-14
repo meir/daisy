@@ -8,6 +8,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use super::resource::Resource;
+
 #[derive(Clone)]
 pub struct File {
     pub src: PathBuf,
@@ -42,13 +44,13 @@ impl File {
         }
     }
 
-    pub fn output_path(&self, ctx: &Context) -> String {
+    pub fn output_path(&self, ctx: &mut Context) -> String {
         let path = self.src.to_str().unwrap();
         let src = Path::new(path).strip_prefix(format!(
             "{}/{}",
             ctx.config.paths.workdir, ctx.config.paths.pages
         ));
-        let output = ctx.get_output_path(src.unwrap().to_str().unwrap()).unwrap();
+        let output = Resource::get_output_path(ctx, src.unwrap().to_str().unwrap()).unwrap();
 
         output.to_str().unwrap().to_string()
     }

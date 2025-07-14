@@ -1,23 +1,21 @@
-use std::{path::Path, rc::Rc};
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    path::Path,
+    rc::Rc,
+};
 
 use crate::ast::{
     builtin,
     environment::{Scope, Value},
     function::default_function,
 };
-use file::File;
+use resource::Resource;
 use walkdir::WalkDir;
 
 use crate::context::Context;
 
 pub mod file;
-
-#[derive(Clone)]
-pub enum Resource {
-    File(File, Scope, Value),
-    SCSS(String, String),
-    Other(String, String),
-}
+pub mod resource;
 
 pub fn load_dir(ctx: &mut Context) {
     WalkDir::new(format!(
@@ -67,16 +65,18 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> 
                 Some("scss") => {
                     let content = std::fs::read_to_string(&src)
                         .map_err(|_| format!("Failed to read SCSS file: {}", src.display()))?;
-                    let css =
-                        grass::from_string(content, &grass::Options::default()).map_err(|err| {
+                    let css = grass::from_string(content.clone(), &grass::Options::default())
+                        .map_err(|err| {
                             format!("Failed to compile SCSS file: {}: {}", src.display(), err)
                         });
 
                     let name = src.file_stem().unwrap().to_str().unwrap();
-                    let uuid = uuid::Uuid::new_v4();
-                    let path = ctx
-                        .get_output_path(format!("{}-{}.css", name, uuid).as_str())
-                        .unwrap();
+                    let mut hasher = DefaultHasher::new();
+                    content.hash(&mut hasher);
+                    let hash = hasher.finish();
+                    let path =
+                        Resource::get_output_path(ctx, format!("{}-{}.css", name, hash).as_str())
+                            .unwrap();
 
                     let rc = Rc::new(Resource::SCSS(
                         path.to_str().unwrap().to_string(),
@@ -85,7 +85,22 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> 
                     ctx.resources.push(rc.clone());
                     Ok(rc)
                 }
-                _ => todo!(),
+                _ => {
+                    let relative_path =
+                        Resource::get_relative_path_from_root(ctx, src.to_str().unwrap())
+                            .map_err(|err| format!("Failed to get relative path: {}", err))?;
+
+                    let output = Resource::get_output_path(ctx, &relative_path)
+                        .map_err(|err| format!("Failed to get output path: {}", err))?;
+
+                    let rc = Rc::new(Resource::Other(
+                        src.to_str().unwrap().to_string(),
+                        output.to_str().unwrap().to_string(),
+                    ));
+
+                    ctx.resources.push(rc.clone());
+                    Ok(rc)
+                }
             }
         } else {
             let with_ext = src.with_extension("ds");

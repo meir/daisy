@@ -26,7 +26,3 @@ features = ["lexer", "unicode"]
 [dependencies.serde]
 version = "1.0.219"
 features = ["derive"]
-
-[dependencies.uuid]
-version = "1.17.0"
-features = ["v4"]

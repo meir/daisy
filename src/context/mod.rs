@@ -1,11 +1,6 @@
-use std::{
-    fs,
-    io::Error,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{fs, path::Path, rc::Rc};
 
-use crate::{grammar::DaisyParser, resolver::Resource};
+use crate::{grammar::DaisyParser, resolver::resource::Resource};
 use log::warn;
 use serde::Deserialize;
 
@@ -88,31 +83,11 @@ impl Context {
         }
     }
 
-    pub fn get_output_path(&self, src: &str) -> Result<PathBuf, Error> {
-        let mut path = Path::new(src);
-        let name = path.file_stem().unwrap();
-        let pathbuf = path.parent().unwrap().join(name);
-        path = pathbuf.as_path();
-
-        if path.extension().is_some() {
-            std::path::absolute(&format!(
-                "{}/{}/{}",
-                self.config.paths.workdir,
-                self.config.paths.output,
-                path.to_str().unwrap(),
-            ))
-        } else {
-            if name == "index" {
-                path = path.parent().unwrap();
-            }
-
-            std::path::absolute(&format!(
-                "{}/{}/{}/index.html",
-                self.config.paths.workdir,
-                self.config.paths.output,
-                path.to_str().unwrap(),
-            ))
-        }
+    pub fn get_output_path(&self) -> String {
+        format!(
+            "{}/{}/",
+            self.config.paths.workdir, self.config.paths.output
+        )
     }
 
     pub fn save_content(&self, path: &str, content: &str) -> String {

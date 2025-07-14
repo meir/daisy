@@ -17,6 +17,7 @@ table headers = [
 func header = use("src/component/title")
 
 str term = $`echo $TERM`
+str cat_pic = use("assets/images/cat.png")
 
 return : html {
   head { 
@@ -25,5 +26,6 @@ return : html {
   body {
     @{header(std.hello_world())}
     div > @{term}
+    div > img src=@{cat_pic} alt="A cute cat";
   }
 }
