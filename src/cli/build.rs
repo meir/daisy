@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::ast::environment::Value;
 use crate::context::Context;
 use crate::resolver::{self, resource::Resource};
 
@@ -9,13 +10,25 @@ pub fn build(ctx: &mut Context) {
     for rs in resolver::get_all(ctx) {
         match rs.as_ref() {
             Resource::File(file, env, render) => {
-                if env.get("url").is_none() {
-                    continue;
-                }
+                let output_path = if env.get("url").is_some() {
+                    let url = env.get("url").unwrap_or_else(|| {
+                        panic!(
+                            "File {} does not have an output path defined",
+                            file.src.to_str().unwrap()
+                        )
+                    });
+                    let url = match url {
+                        Value::Str(url) => url.to_string(),
+                        _ => panic!("Expected a string for output path, got {}", url.get_type()),
+                    };
+
+                    Resource::get_output_path(ctx, url.as_str()).unwrap()
+                } else {
+                    Resource::get_output_path(ctx, &file.src.to_str().unwrap()).unwrap()
+                };
 
                 let content = &render.render(ctx, &mut env.clone());
-                let output_path = file.output_path(ctx);
-                let output = ctx.save_content(output_path.as_str(), content);
+                let output = ctx.save_content(output_path.to_str().unwrap(), content);
                 println!("[DAISY] Built {} -> {}", file.src.to_str().unwrap(), output);
             }
             Resource::SCSS(path, content) => {

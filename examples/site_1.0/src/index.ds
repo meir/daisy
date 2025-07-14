@@ -14,7 +14,7 @@ table headers = [
   : link rel="stylesheet" href=@{css};
 ]
 
-func header = use("src/component/title")
+func header = use("component/title")
 
 str term = $`echo $TERM`
 str cat_pic = use("assets/images/cat.png")

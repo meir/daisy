@@ -1,0 +1,12 @@
+meta {
+  str url = "/404.html"
+}
+
+return : html {
+  head { 
+    title > "404 - Page not found!"
+  }
+  body {
+    h1 > "404 - Page not found!"
+  }
+}

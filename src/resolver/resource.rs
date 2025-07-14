@@ -43,7 +43,7 @@ impl Resource {
                 ))
             }
         } else {
-            panic!("Resource must have an extension");
+            std::path::absolute(&format!("{}/{}/index.html", ctx.get_output_path(), src,))
         }
     }
 
