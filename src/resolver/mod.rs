@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     hash::{DefaultHasher, Hash, Hasher},
     path::Path,
     rc::Rc,
@@ -27,21 +28,35 @@ pub fn load_dir(ctx: &mut Context) {
     .filter(|entry| entry.file_type().is_file() && entry.path().extension() == Some("ds".as_ref()))
     .for_each(|entry| {
         let path = entry.path();
-        get_file(ctx, path.to_str().unwrap().to_string()).unwrap_or_else(|err| {
+        let file = get_file(ctx, path.to_str().unwrap().to_string()).unwrap_or_else(|err| {
             panic!("Failed to load file {}: {}", path.display(), err);
         });
+
+        let mut resource = file.borrow_mut();
+
+        if let Resource::File(file, _, _) = &mut *resource {
+            file.is_page = true;
+        } else {
+            panic!(
+                "Expected a File resource, got {}",
+                entry.path().to_str().unwrap()
+            );
+        }
     });
 }
 
-pub fn get_all(ctx: &mut Context) -> Vec<Rc<Resource>> {
+pub fn get_all(ctx: &mut Context) -> Vec<Rc<RefCell<Resource>>> {
     ctx.resources.iter().cloned().collect()
 }
 
-pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> {
+pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>, String> {
     let src = Path::new(ctx.config.paths.workdir.as_str()).join(src);
-    if let Some(rs) = ctx.resources.iter().find(|rs| match rs.as_ref() {
-        Resource::File(file, _, _) => file.src == src,
-        _ => false,
+    if let Some(rs) = ctx.resources.iter().find(|rs| {
+        if let Resource::File(file, _, _) = &*rs.borrow() {
+            file.src == src
+        } else {
+            false
+        }
     }) {
         Ok(rs.clone())
     } else {
@@ -51,14 +66,15 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> 
                     let file = file::File::load_absolute(ctx, src.to_str().unwrap());
                     let value = file.meta.to_value(ctx, &mut Scope::new());
 
-                    let mut env = match value {
-                        Value::Table(scope) => scope,
-                        _ => panic!("Meta must be a table"),
+                    let mut env = if let Value::Table(scope) = value {
+                        scope
+                    } else {
+                        panic!("Meta must be a table")
                     };
                     builtin::init(&mut env);
 
                     let output = default_function(ctx, &file.ast, &vec![], &mut env);
-                    let rc = Rc::new(Resource::File(file, env, output));
+                    let rc = Rc::new(RefCell::new(Resource::File(file, env, output)));
                     ctx.resources.push(rc.clone());
                     Ok(rc)
                 }
@@ -78,10 +94,10 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> 
                         Resource::get_output_path(ctx, format!("{}-{}.css", name, hash).as_str())
                             .unwrap();
 
-                    let rc = Rc::new(Resource::SCSS(
+                    let rc = Rc::new(RefCell::new(Resource::SCSS(
                         path.to_str().unwrap().to_string(),
                         css.unwrap(),
-                    ));
+                    )));
                     ctx.resources.push(rc.clone());
                     Ok(rc)
                 }
@@ -93,10 +109,10 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> 
                     let output = Resource::get_output_path(ctx, &relative_path)
                         .map_err(|err| format!("Failed to get output path: {}", err))?;
 
-                    let rc = Rc::new(Resource::Other(
+                    let rc = Rc::new(RefCell::new(Resource::Other(
                         src.to_str().unwrap().to_string(),
                         output.to_str().unwrap().to_string(),
-                    ));
+                    )));
 
                     ctx.resources.push(rc.clone());
                     Ok(rc)
@@ -108,9 +124,9 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<Resource>, String> 
                 get_file(ctx, with_ext.to_str().unwrap().to_string())
             } else {
                 panic!(
-                            "File not found: {}. Please ensure the file exists or has the correct extension.",
-                            src.display()
-                        );
+                    "File not found: {}. Please ensure the file exists or has the correct extension.",
+                    src.display()
+                );
             }
         }
     }

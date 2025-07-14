@@ -15,19 +15,18 @@ pub fn builtin_format(
         );
     }
 
-    match &inputs[0] {
-        Value::Str(src) => {
-            let mut src = src.clone();
-            for i in 1..inputs.len() {
-                let value = inputs.get(i).unwrap();
-                let str = value.render(ctx, scope);
-                src = src.replacen("{}", str.as_str(), 1);
-            }
-            Value::Str(src)
+    if let Value::Str(src) = &inputs[0] {
+        let mut src = src.clone();
+        for i in 1..inputs.len() {
+            let value = inputs.get(i).unwrap();
+            let str = value.render(ctx, scope);
+            src = src.replacen("{}", str.as_str(), 1);
         }
-        _ => panic!(
+        Value::Str(src)
+    } else {
+        panic!(
             "Expected a string argument for 'format', got {}",
             inputs[0].get_type()
-        ),
+        )
     }
 }

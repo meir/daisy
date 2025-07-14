@@ -14,18 +14,13 @@ use super::resource::Resource;
 pub struct File {
     pub src: PathBuf,
     pub content: String,
+    pub is_page: bool,
 
     pub meta: Expression,
     pub ast: Vec<Statement>,
 }
 
 impl File {
-    #[allow(dead_code)]
-    pub fn load(ctx: &mut Context, file: &str) -> File {
-        let src = Path::new(ctx.config.paths.workdir.as_str()).join(file);
-        Self::load_absolute(ctx, src.to_str().unwrap())
-    }
-
     pub fn load_absolute<P: AsRef<Path>>(ctx: &mut Context, src: P) -> File {
         let content = fs::read_to_string(&src).unwrap_or_else(|_| {
             panic!("Failed to read file: {:?}", src.as_ref());
@@ -38,21 +33,11 @@ impl File {
         File {
             src: src.as_ref().to_path_buf(),
             content,
+            is_page: false,
 
             meta: ast.0,
             ast: ast.1,
         }
-    }
-
-    pub fn output_path(&self, ctx: &mut Context) -> String {
-        let path = self.src.to_str().unwrap();
-        let src = Path::new(path).strip_prefix(format!(
-            "{}/{}",
-            ctx.config.paths.workdir, ctx.config.paths.pages
-        ));
-        let output = Resource::get_output_path(ctx, src.unwrap().to_str().unwrap()).unwrap();
-
-        output.to_str().unwrap().to_string()
     }
 
     fn position_to_line_column(input: &str, pos: usize) -> (usize, usize) {

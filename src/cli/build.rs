@@ -8,8 +8,12 @@ pub fn build(ctx: &mut Context) {
     resolver::load_dir(ctx);
 
     for rs in resolver::get_all(ctx) {
-        match rs.as_ref() {
+        match &*rs.borrow() {
             Resource::File(file, env, render) => {
+                if !file.is_page {
+                    continue;
+                }
+
                 let output_path = if env.get("url").is_some() {
                     let url = env.get("url").unwrap_or_else(|| {
                         panic!(

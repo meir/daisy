@@ -54,9 +54,10 @@ impl Expression {
                 let table = Value::Table(scope.clone());
                 let mut value: Option<&Value> = Some(&table);
                 for part in name {
-                    value = match value {
-                        Some(Value::Table(table)) => table.get(part),
-                        _ => None,
+                    value = if let Some(Value::Table(table)) = value {
+                        table.get(part)
+                    } else {
+                        None
                     };
                 }
 

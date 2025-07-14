@@ -1,4 +1,4 @@
-use std::{fs, path::Path, rc::Rc};
+use std::{cell::RefCell, fs, path::Path, rc::Rc};
 
 use crate::{grammar::DaisyParser, resolver::resource::Resource};
 use log::warn;
@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 pub struct Context {
     pub parser: DaisyParser,
-    pub resources: Vec<Rc<Resource>>,
+    pub resources: Vec<Rc<RefCell<Resource>>>,
     pub config: Config,
 }
 

@@ -58,11 +58,10 @@ fn run_function(
             for i in 0..args.len() {
                 let arg = args.get(i).unwrap();
                 let param = params.get(i).unwrap();
-                match param {
-                    Statement::Definition(_, name, _) => {
-                        inner_scope.set(name.clone(), arg.clone());
-                    }
-                    _ => panic!("Expected a definition node",),
+                if let Statement::Definition(_, name, _) = param {
+                    inner_scope.set(name.clone(), arg.clone());
+                } else {
+                    panic!("Expected a definition node")
                 }
             }
         }
