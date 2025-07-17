@@ -14,6 +14,6 @@ pub fn init(scope: &mut Scope) {
         Type::Str,
     );
 
-    scope.define(Type::Table, "std".into(), Value::Table(builtin));
+    scope.define(Type::Map, "std".into(), Value::Map(builtin));
     scope.define_builtin_function("use".into(), builtin_use, Type::Any);
 }

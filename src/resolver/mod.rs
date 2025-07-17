@@ -66,10 +66,10 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
                     let file = file::File::load_absolute(ctx, src.to_str().unwrap());
                     let value = file.meta.to_value(ctx, &mut Scope::new());
 
-                    let mut env = if let Value::Table(scope) = value {
+                    let mut env = if let Value::Map(scope) = value {
                         scope
                     } else {
-                        panic!("Meta must be a table")
+                        panic!("Meta must be a map")
                     };
                     builtin::init(&mut env);
 

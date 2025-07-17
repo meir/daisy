@@ -8,12 +8,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::resource::Resource;
-
 #[derive(Clone)]
 pub struct File {
     pub src: PathBuf,
-    pub content: String,
     pub is_page: bool,
 
     pub meta: Expression,
@@ -32,7 +29,6 @@ impl File {
 
         File {
             src: src.as_ref().to_path_buf(),
-            content,
             is_page: false,
 
             meta: ast.0,

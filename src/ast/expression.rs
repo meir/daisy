@@ -25,7 +25,7 @@ pub enum Expression {
     GreaterThan(Box<Expression>, Box<Expression>),
     GreaterThanOrEqual(Box<Expression>, Box<Expression>),
     Script(String),
-    Table(Vec<Statement>),
+    Map(Vec<Statement>),
     Array(Vec<Box<Expression>>),
     Nil,
 }
@@ -51,11 +51,11 @@ impl Expression {
                 call_function(ctx, &value, args, scope)
             }
             Expression::Identifier(name) => {
-                let table = Value::Table(scope.clone());
-                let mut value: Option<&Value> = Some(&table);
+                let map = Value::Map(scope.clone());
+                let mut value: Option<&Value> = Some(&map);
                 for part in name {
-                    value = if let Some(Value::Table(table)) = value {
-                        table.get(part)
+                    value = if let Some(Value::Map(map)) = value {
+                        map.get(part)
                     } else {
                         None
                     };
@@ -225,17 +225,17 @@ impl Expression {
                     ),
                 }
             }
-            Expression::Table(statements) => {
-                let mut table_scope = Scope::new();
+            Expression::Map(statements) => {
+                let mut map_scope = Scope::new();
                 for statement in statements {
                     if let Statement::Definition(type_, name, expr) = statement {
                         let value = expr.to_value(ctx, scope);
-                        table_scope.define(type_.clone(), name.clone(), value);
+                        map_scope.define(type_.clone(), name.clone(), value);
                     } else {
-                        panic!("Only definitions are allowed in table expressions");
+                        panic!("Only definitions are allowed in map expressions");
                     }
                 }
-                Value::Table(table_scope)
+                Value::Map(map_scope)
             }
             Expression::Array(expressions) => {
                 let values: Vec<Value> = expressions
@@ -257,7 +257,7 @@ impl Expression {
                     Type::Any,
                 );
 
-                Value::Table(array_scope)
+                Value::Array(array_scope)
             }
             //later
             Expression::Nil => Value::Nil,

@@ -9,14 +9,14 @@ use crate::ast::statement::Statement;
 grammar;
 
 pub Daisy: (Expression, Vec<Statement>) = {
-  <body:Statement*> => (Expression::Table(vec![]), body),
+  <body:Statement*> => (Expression::Map(vec![]), body),
   <meta:Meta> <body:Statement*> => (meta, body),
 };
 
 // Meta
 
 Meta: Expression = {
-  "meta" "{" <def:Definition*> "}" => Expression::Table(def),
+  "meta" "{" <def:Definition*> "}" => Expression::Map(def),
 }
 
 // Types / Identifiers
@@ -30,7 +30,8 @@ Type: Type = {
   "bool" => Type::Bool,
   "element" => Type::Element,
   "func" => Type::Function,
-  "table" => Type::Table,
+  "map" => Type::Map,
+  "arr" => Type::Array,
 }
 
 Str: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
@@ -73,7 +74,7 @@ Factor: Expression = {
 Term: Expression = {
   "(" <Expression> ")",
   <v:Value> => Expression::Value(v),
-  "{" <def:Definition*> "}" => Expression::Table(def),
+  "{" <def:Definition*> "}" => Expression::Map(def),
   "[" <args:(<Expression> ",")*> <arg:Expression?> "]" => {
     let mut args = args;
     if let Some(a) = arg {

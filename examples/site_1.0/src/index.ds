@@ -3,13 +3,13 @@ meta {
 }
 
 
-table title = {
+map title = {
   str real = std.format("{} - {}", "Hello world!", url)
 }
 
 str css = use("assets/main.scss")
 
-table headers = [
+arr headers = [
   : title > @{title.real},
   : link rel="stylesheet" href=@{css};
 ]

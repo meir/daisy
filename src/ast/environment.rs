@@ -25,7 +25,8 @@ pub enum Value {
         Type,
         Vec<Statement>,
     ),
-    Table(Scope),
+    Map(Scope),
+    Array(Scope),
     Nil,
 }
 
@@ -40,13 +41,30 @@ impl Value {
             Value::ScopedElement(scope, element) => element.render(ctx, &mut scope.clone()),
             Value::Function(..) => "".into(),
             Value::ScopedFunction(..) => "".into(),
-            Value::Table(scope) => {
+            Value::Map(scope) => {
                 let mut scope = scope.clone();
                 let keys = &scope.get_keys();
                 let mut output = String::new();
                 for key in keys {
                     if let Some(value) = scope.clone().get(&key) {
                         output.push_str(&value.render(ctx, &mut scope))
+                    }
+                }
+                output
+            }
+            Value::Array(scope) => {
+                let mut scope = scope.clone();
+                let mut keys = scope.get_keys();
+                let mut output = String::new();
+                keys.sort_by(|a, b| {
+                    a.parse::<i64>()
+                        .unwrap_or(0)
+                        .cmp(&b.parse::<i64>().unwrap_or(0))
+                });
+
+                for key in keys {
+                    if let Some(value) = scope.clone().get(&key) {
+                        output.push_str(&value.render(ctx, &mut scope));
                     }
                 }
                 output
@@ -65,7 +83,8 @@ impl Value {
             Value::ScopedElement(_, _) => Type::Element,
             Value::Function(..) => Type::Function,
             Value::ScopedFunction(..) => Type::Function,
-            Value::Table(..) => Type::Table,
+            Value::Map(..) => Type::Map,
+            Value::Array(..) => Type::Array,
             Value::Nil => Type::Nil,
         }
     }
@@ -100,7 +119,8 @@ impl Display for Value {
             Value::ScopedElement(_, _) => write!(f, "scoped_element()"),
             Value::Function(..) => write!(f, "function()"),
             Value::ScopedFunction(..) => write!(f, "scoped_function()"),
-            Value::Table(..) => write!(f, "table()"),
+            Value::Map(..) => write!(f, "Map()"),
+            Value::Array(..) => write!(f, "Array()"),
             Value::Nil => write!(f, "nil"),
         }
     }
@@ -114,7 +134,8 @@ pub enum Type {
     Bool,
     Element,
     Function,
-    Table,
+    Map,
+    Array,
     Nil,
     Any, // not usable in the language, but needed to return any type using "use"
 }
@@ -130,7 +151,8 @@ impl Type {
             (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
             (Type::Function, Value::ScopedFunction(..)) => true,
-            (Type::Table, Value::Table(..)) => true,
+            (Type::Map, Value::Map(_)) => true,
+            (Type::Array, Value::Array(_)) => true,
             (_, Value::Nil) => true,
             (Type::Any, _) => true,
             _ => false,
@@ -147,7 +169,8 @@ impl Display for Type {
             Type::Bool => write!(f, "Boolean"),
             Type::Element => write!(f, "Element"),
             Type::Function => write!(f, "Function"),
-            Type::Table => write!(f, "Table"),
+            Type::Map => write!(f, "Map"),
+            Type::Array => write!(f, "Array"),
             Type::Nil => write!(f, "Nil"),
             Type::Any => write!(f, "Any"),
         }
