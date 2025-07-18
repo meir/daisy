@@ -50,12 +50,10 @@ pub fn get_all(ctx: &mut Context) -> Vec<Rc<RefCell<Resource>>> {
 
 pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>, String> {
     let src = Path::new(ctx.config.paths.workdir.as_str()).join(src);
-    if let Some(rs) = ctx.resources.iter().find(|rs| {
-        if let Resource::File(file, _) = &*rs.borrow() {
-            file.src == src
-        } else {
-            false
-        }
+    if let Some(rs) = ctx.resources.iter().find(|rs| match &*rs.borrow() {
+        Resource::File(file, _) => file.src == src,
+        Resource::SCSS(src_file, _) => Path::new(src_file) == src,
+        Resource::Other(src_file, _) => Path::new(src_file) == src,
     }) {
         Ok(rs.clone())
     } else {
