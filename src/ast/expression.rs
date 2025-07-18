@@ -283,14 +283,16 @@ impl Expression {
                                 match statement.process(ctx, inner_scope) {
                                     Ok((true, value)) => return value,
                                     Ok((false, value)) => {
-                                        end_value = Some(value);
+                                        if value.get_type() != Type::Nil {
+                                            end_value = Some(value);
+                                        }
                                     }
                                     Err(err) => panic!("Error processing for loop: {:?}", err),
                                 }
                             }
 
                             if let Some(end_value) = end_value {
-                                output_array.define(Type::Any, i, end_value);
+                                output_array.array_push(end_value);
                             }
                         }
 
@@ -322,7 +324,9 @@ impl Expression {
                             match statement.process(ctx, inner_scope) {
                                 Ok((true, value)) => return value,
                                 Ok((false, value)) => {
-                                    end_value = Some(value);
+                                    if value.get_type() != Type::Nil {
+                                        end_value = Some(value);
+                                    }
                                 }
                                 Err(err) => panic!("Error processing for loop: {:?}", err),
                             }
