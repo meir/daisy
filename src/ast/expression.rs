@@ -27,6 +27,13 @@ pub enum Expression {
     Script(String),
     Map(Vec<Statement>),
     Array(Vec<Box<Expression>>),
+    For(String, Box<Expression>, Vec<Statement>),
+    ForLoop(
+        Box<Statement>,
+        Box<Expression>,
+        Box<Statement>,
+        Vec<Statement>,
+    ),
     Nil,
 }
 
@@ -258,6 +265,82 @@ impl Expression {
                 );
 
                 Value::Array(array_scope)
+            }
+            Expression::For(id, iterable, statements) => {
+                let iterable_value = iterable.to_value(ctx, scope);
+                if let Value::Array(mut array_scope) = iterable_value {
+                    scope.wrap(|inner_scope| {
+                        let indices = array_scope.get_indices();
+                        let mut output_array = Scope::new();
+
+                        inner_scope.define(Type::Any, id.clone(), Value::Nil);
+                        for i in indices {
+                            let value = array_scope.get(&i).cloned().unwrap_or(Value::Nil);
+                            inner_scope.set(id.clone(), value.clone());
+
+                            let mut end_value: Option<Value> = None;
+                            for statement in statements {
+                                match statement.process(ctx, inner_scope) {
+                                    Ok((true, value)) => return value,
+                                    Ok((false, value)) => {
+                                        end_value = Some(value);
+                                    }
+                                    Err(err) => panic!("Error processing for loop: {:?}", err),
+                                }
+                            }
+
+                            if let Some(end_value) = end_value {
+                                output_array.define(Type::Any, i, end_value);
+                            }
+                        }
+
+                        if output_array.get_keys().is_empty() {
+                            Value::Nil
+                        } else {
+                            Value::Array(output_array)
+                        }
+                    })
+                } else {
+                    panic!(
+                        "Expected an array for for loop, got {}",
+                        iterable_value.get_type()
+                    );
+                }
+            }
+            Expression::ForLoop(init, condition, increment, statements) => {
+                scope.wrap(|inner_scope| {
+                    init.process(ctx, inner_scope).unwrap();
+                    let mut output_array = Scope::new();
+                    loop {
+                        let condition_value = condition.to_value(ctx, inner_scope);
+                        if let Value::Bool(false) = condition_value {
+                            break;
+                        }
+
+                        let mut end_value: Option<Value> = None;
+                        for statement in statements {
+                            match statement.process(ctx, inner_scope) {
+                                Ok((true, value)) => return value,
+                                Ok((false, value)) => {
+                                    end_value = Some(value);
+                                }
+                                Err(err) => panic!("Error processing for loop: {:?}", err),
+                            }
+                        }
+
+                        if let Some(end_value) = end_value {
+                            output_array.array_push(end_value);
+                        }
+
+                        increment.process(ctx, inner_scope).unwrap();
+                    }
+
+                    if output_array.get_keys().is_empty() {
+                        Value::Nil
+                    } else {
+                        Value::Array(output_array)
+                    }
+                })
             }
             //later
             Expression::Nil => Value::Nil,

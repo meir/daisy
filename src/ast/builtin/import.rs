@@ -1,4 +1,5 @@
 use crate::ast::environment::{Scope, Value};
+use crate::ast::function::default_function;
 use crate::ast::statement::Statement;
 use crate::context::Context;
 use crate::resolver::{self, resource::Resource};
@@ -7,7 +8,7 @@ pub fn builtin_use(
     ctx: &mut Context,
     _: &Vec<Statement>,
     inputs: &Vec<Value>,
-    _: &mut Scope,
+    env: &mut Scope,
 ) -> Value {
     if inputs.len() == 0 {
         panic!(
@@ -17,9 +18,17 @@ pub fn builtin_use(
     }
 
     if let Value::Str(import) = &inputs[0] {
+        let meta = env.get("meta");
+
         let resource = resolver::get_file(ctx, import.clone());
         match &*resource.unwrap().borrow() {
-            Resource::File(_, _, output) => output.clone(),
+            Resource::File(file, scope, _) => {
+                let mut scope = scope.clone();
+                if let Some(meta) = meta {
+                    scope.set("meta".to_string(), meta.clone());
+                }
+                default_function(ctx, &file.ast, &vec![], &mut scope)
+            }
             Resource::SCSS(path, _) => {
                 let relative_path = Resource::get_relative_path(ctx, path).unwrap().to_string();
                 Value::Str(relative_path)

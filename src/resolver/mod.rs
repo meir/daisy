@@ -7,7 +7,7 @@ use std::{
 
 use crate::ast::{
     builtin,
-    environment::{Scope, Value},
+    environment::{Scope, Type},
     function::default_function,
 };
 use resource::Resource;
@@ -64,13 +64,10 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
             match ext.to_str() {
                 Some("ds") => {
                     let file = file::File::load_absolute(ctx, src.to_str().unwrap());
-                    let value = file.meta.to_value(ctx, &mut Scope::new());
+                    let meta_value = file.meta.to_value(ctx, &mut Scope::new());
 
-                    let mut env = if let Value::Map(scope) = value {
-                        scope
-                    } else {
-                        panic!("Meta must be a map")
-                    };
+                    let mut env = Scope::new();
+                    env.define(Type::Map, "meta".into(), meta_value);
                     builtin::init(&mut env);
 
                     let output = default_function(ctx, &file.ast, &vec![], &mut env);

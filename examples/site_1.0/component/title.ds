@@ -1,7 +1,7 @@
 
 return (str title) element {
   return : h1.imported {
-    @{title}
+    @{title} "-" @{url} "-" @{meta.url}
   }
 }
 

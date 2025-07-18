@@ -54,15 +54,9 @@ impl Value {
             }
             Value::Array(scope) => {
                 let mut scope = scope.clone();
-                let mut keys = scope.get_keys();
                 let mut output = String::new();
-                keys.sort_by(|a, b| {
-                    a.parse::<i64>()
-                        .unwrap_or(0)
-                        .cmp(&b.parse::<i64>().unwrap_or(0))
-                });
 
-                for key in keys {
+                for key in scope.get_indices() {
                     if let Some(value) = scope.clone().get(&key) {
                         output.push_str(&value.render(ctx, &mut scope));
                     }
@@ -193,6 +187,7 @@ impl Scope {
 
     #[allow(dead_code)]
     pub fn print_current_scope(&self) {
+        println!("Current scope: {}", self.current_scope);
         for (name, value) in &self.variables[self.current_scope] {
             println!("{}: {} ({})", name, value.1, value.0);
         }
@@ -200,6 +195,20 @@ impl Scope {
 
     pub fn get_keys(&mut self) -> Vec<String> {
         self.variables[self.current_scope].keys().cloned().collect()
+    }
+
+    pub fn get_indices(&mut self) -> Vec<String> {
+        let mut indices: Vec<String> = self.variables[self.current_scope]
+            .keys()
+            .filter_map(|key| key.parse::<i64>().ok().map(|i| i.to_string()))
+            .collect();
+        indices.sort_by_key(|k| k.parse::<i64>().unwrap_or(0));
+        indices
+    }
+
+    pub fn array_push(&mut self, value: Value) {
+        let index = self.get_indices().len();
+        self.define(Type::Any, index.to_string(), value);
     }
 
     pub fn sync_scope(&mut self) {

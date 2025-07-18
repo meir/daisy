@@ -90,6 +90,10 @@ impl Context {
         )
     }
 
+    pub fn get_page_path(&self) -> String {
+        format!("{}/{}/", self.config.paths.workdir, self.config.paths.pages)
+    }
+
     pub fn save_content(&self, path: &str, content: &str) -> String {
         let output_path = Path::new(path);
 

@@ -55,6 +55,7 @@ Expression: Expression = {
   <l:Expression> ">" <r:Calc> => Expression::GreaterThan(Box::new(l), Box::new(r)),
   <l:Expression> ">=" <r:Calc> => Expression::GreaterThanOrEqual(Box::new(l), Box::new(r)),
   ExpressionCall,
+  ExpressionFor,
   Calc,
 };
 
@@ -90,6 +91,13 @@ Term: Expression = {
     }
     Expression::Identifier(path)
   },
+  "meta" <sub:("."<Identifier>)*> => { // Special case for meta access
+    let mut path = vec!["meta".to_string()];
+    for s in sub {
+      path.push(s);
+    }
+    Expression::Identifier(path)
+  },
   <s:Script> => Expression::Script(s),
 };
 
@@ -115,12 +123,19 @@ ExpressionCall: Expression = {
   },
 }
 
+ExpressionFor: Expression = {
+  "for" <id:Identifier> "in" <iterable:Expression> "{" <body:Statement*> "}" => Expression::For(id, iterable.into(), body),
+  "for" <init:Definition> ";" <comp:Expression> ";" <step:Statement> "{" <body:Statement*> "}" => Expression::ForLoop(init.into(), comp.into(), step.into(), body),
+}
+
 // Function Expression
 
 FunctionParameters: Vec<Statement> = {
-  <args:(<Definition> ",")*> <f:Definition> => {
+  <args:(<Definition> ",")*> <f:Definition?> => {
     let mut params = args;
-    params.push(f);
+    if let Some(f) = f {
+      params.push(f);
+    }
     params
   },
 }
@@ -134,6 +149,7 @@ Function: Value = {
 // Statements
 
 Statement: Statement = {
+  "collect" <e:Expression> => Statement::Collect(e.into()),
   Definition,
   Assignment,
   Return,
@@ -169,7 +185,7 @@ If: Statement = {
 
 For: Statement = {
   "for" <id:Identifier> "in" <iterable:Expression> "{" <body:Statement*> "}" => Statement::For(id, iterable, body),
-  "for" <init:Definition> ";" <comp:Expression> ";" <step:Expression> "{" <body:Statement*> "}" => Statement::ForLoop(init.into(), comp, step, body),
+  "for" <init:Definition> ";" <comp:Expression> ";" <step:Statement> "{" <body:Statement*> "}" => Statement::ForLoop(init.into(), comp, step.into(), body),
 }
 
 // html related rules

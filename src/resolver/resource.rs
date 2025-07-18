@@ -20,6 +20,7 @@ pub enum Resource {
 impl Resource {
     pub fn get_output_path(ctx: &mut Context, src: &str) -> Result<PathBuf, Error> {
         let mut path = Path::new(src);
+        path = path.strip_prefix(ctx.get_page_path()).unwrap_or(path);
 
         if let Some(ext) = path.extension() {
             if ext == "ds" {
@@ -43,7 +44,7 @@ impl Resource {
                 ))
             }
         } else {
-            std::path::absolute(&format!("{}/{}/index.html", ctx.get_output_path(), src,))
+            std::path::absolute(&format!("{}/{}/index.html", ctx.get_output_path(), src))
         }
     }
 

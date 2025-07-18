@@ -3,14 +3,14 @@ meta {
 }
 
 
-map title = {
-  str real = std.format("{} - {}", "Hello world!", url)
+func title = () str {
+  return std.format("{} - {}", "Hello world!", meta.url)
 }
 
 str css = use("assets/main.scss")
 
 arr headers = [
-  : title > @{title.real},
+  : title > @{title()},
   : link rel="stylesheet" href=@{css};
 ]
 
@@ -27,5 +27,12 @@ return : html {
     @{header(std.hello_world())}
     div > @{term}
     div > img src=@{cat_pic} alt="A cute cat";
+    ul {
+      @{for page in std.pages() {
+        collect : li {
+          @{page.url}
+        }
+      }}
+    }
   }
 }
