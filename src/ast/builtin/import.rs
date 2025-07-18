@@ -22,7 +22,7 @@ pub fn builtin_use(
 
         let resource = resolver::get_file(ctx, import.clone());
         match &*resource.unwrap().borrow() {
-            Resource::File(file, scope, _) => {
+            Resource::File(file, scope) => {
                 let mut scope = scope.clone();
                 if let Some(meta) = meta {
                     scope.set("meta".to_string(), meta.clone());

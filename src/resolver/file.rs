@@ -1,5 +1,6 @@
-use crate::ast::expression::Expression;
+use crate::ast::environment::{Scope, Value};
 use crate::ast::statement::Statement;
+use crate::ast::{expression::Expression, function::default_function};
 use crate::context::Context;
 use crate::grammar::Token;
 use lalrpop_util::ParseError;
@@ -34,6 +35,10 @@ impl File {
             meta: ast.0,
             ast: ast.1,
         }
+    }
+
+    pub fn process(&self, ctx: &mut Context, scope: &Scope) -> Value {
+        default_function(ctx, &self.ast, &vec![], &mut scope.clone())
     }
 
     fn position_to_line_column(input: &str, pos: usize) -> (usize, usize) {

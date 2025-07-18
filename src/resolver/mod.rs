@@ -8,7 +8,6 @@ use std::{
 use crate::ast::{
     builtin,
     environment::{Scope, Type},
-    function::default_function,
 };
 use resource::Resource;
 use walkdir::WalkDir;
@@ -34,7 +33,7 @@ pub fn load_dir(ctx: &mut Context) {
 
         let mut resource = file.borrow_mut();
 
-        if let Resource::File(file, _, _) = &mut *resource {
+        if let Resource::File(file, _) = &mut *resource {
             file.is_page = true;
         } else {
             panic!(
@@ -52,7 +51,7 @@ pub fn get_all(ctx: &mut Context) -> Vec<Rc<RefCell<Resource>>> {
 pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>, String> {
     let src = Path::new(ctx.config.paths.workdir.as_str()).join(src);
     if let Some(rs) = ctx.resources.iter().find(|rs| {
-        if let Resource::File(file, _, _) = &*rs.borrow() {
+        if let Resource::File(file, _) = &*rs.borrow() {
             file.src == src
         } else {
             false
@@ -70,8 +69,7 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
                     env.define(Type::Map, "meta".into(), meta_value);
                     builtin::init(&mut env);
 
-                    let output = default_function(ctx, &file.ast, &vec![], &mut env);
-                    let rc = Rc::new(RefCell::new(Resource::File(file, env, output)));
+                    let rc = Rc::new(RefCell::new(Resource::File(file, env)));
                     ctx.resources.push(rc.clone());
                     Ok(rc)
                 }

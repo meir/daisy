@@ -15,7 +15,7 @@ pub fn builtin_pages(
     let resources = resolver::get_all(ctx);
     let mut index = 0;
     for rc in resources {
-        if let Resource::File(file, _, _) = &*rc.borrow() {
+        if let Resource::File(file, _) = &*rc.borrow() {
             if !file.is_page {
                 continue; // Skip non-page files
             }

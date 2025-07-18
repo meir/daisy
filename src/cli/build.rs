@@ -7,9 +7,11 @@ use crate::resolver::{self, resource::Resource};
 pub fn build(ctx: &mut Context) {
     resolver::load_dir(ctx);
 
-    for rs in resolver::get_all(ctx) {
+    // Process pages
+    let resources = resolver::get_all(ctx);
+    for rs in resources {
         match &*rs.borrow() {
-            Resource::File(file, env, render) => {
+            Resource::File(file, env) => {
                 if !file.is_page {
                     continue;
                 }
@@ -31,10 +33,19 @@ pub fn build(ctx: &mut Context) {
                     Resource::get_output_path(ctx, &file.src.to_str().unwrap()).unwrap()
                 };
 
-                let content = &render.render(ctx, &mut env.clone());
+                let mut env = env.clone();
+                let content = &file.process(ctx, &env).render(ctx, &mut env);
                 let output = ctx.save_content(output_path.to_str().unwrap(), content);
                 println!("[DAISY] Built {} -> {}", file.src.to_str().unwrap(), output);
             }
+            _ => {}
+        }
+    }
+
+    // after pages have been process, new resources have been added, process these resources
+    let resources = resolver::get_all(ctx);
+    for rs in resources {
+        match &*rs.borrow() {
             Resource::SCSS(path, content) => {
                 let output = ctx.save_content(path, content);
                 println!("[SCSS] Built SCSS {} -> {}", path, output);
@@ -54,6 +65,7 @@ pub fn build(ctx: &mut Context) {
                 });
                 println!("[ASSET] Copied {} -> {}", src, output);
             }
+            _ => {}
         }
     }
 }
