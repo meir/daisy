@@ -3,7 +3,7 @@ use crate::context::Context;
 use super::{
     environment::{Scope, Type, Value},
     expression::Expression,
-    statement::Statement,
+    statement::{ResultType, Statement},
 };
 
 pub fn call_function(
@@ -88,12 +88,27 @@ pub fn default_function(
 ) -> Value {
     for stmt in stmts {
         match stmt.process(ctx, scope) {
-            Ok((true, value)) => {
+            Ok(ResultType::Return(value)) => {
                 return value;
             }
-            Ok((false, _)) => {}
+            Ok(ResultType::Collect(value)) => {
+                let mut array = Scope::new();
+                for val in value {
+                    array.array_push(val);
+                }
+                return Value::Array(array);
+            }
+            Ok(ResultType::Break) => {
+                panic!("Break statement outside of loop");
+            }
+            Ok(ResultType::Continue) => {
+                panic!("Continue statement outside of loop");
+            }
             Err(err) => {
                 panic!("Error processing statement: {:?}", err);
+            }
+            Ok(ResultType::NOP) => {
+                // Do nothing, continue processing
             }
         }
     }

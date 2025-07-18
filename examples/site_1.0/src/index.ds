@@ -28,11 +28,13 @@ return : html {
     div > @{term}
     div > img src=@{cat_pic} alt="A cute cat";
     ul {
-      @{for page in std.pages() {
-        collect : li {
-          @{page.url}
+      for page in std.pages() {
+        if page.url == "/" {
+          collect : li {
+            @{page.url}
+          }
         }
-      }}
+      }
     }
   }
 }

@@ -55,7 +55,6 @@ Expression: Expression = {
   <l:Expression> ">" <r:Calc> => Expression::GreaterThan(Box::new(l), Box::new(r)),
   <l:Expression> ">=" <r:Calc> => Expression::GreaterThanOrEqual(Box::new(l), Box::new(r)),
   ExpressionCall,
-  ExpressionFor,
   Calc,
 };
 
@@ -123,11 +122,6 @@ ExpressionCall: Expression = {
   },
 }
 
-ExpressionFor: Expression = {
-  "for" <id:Identifier> "in" <iterable:Expression> "{" <body:Statement*> "}" => Expression::For(id, iterable.into(), body),
-  "for" <init:Definition> ";" <comp:Expression> ";" <step:Statement> "{" <body:Statement*> "}" => Expression::ForLoop(init.into(), comp.into(), step.into(), body),
-}
-
 // Function Expression
 
 FunctionParameters: Vec<Statement> = {
@@ -149,7 +143,9 @@ Function: Value = {
 // Statements
 
 Statement: Statement = {
-  "collect" <e:Expression> => Statement::Collect(e.into()),
+  Collect,
+  Break,
+  Continue,
   Definition,
   Assignment,
   Return,
@@ -157,6 +153,13 @@ Statement: Statement = {
   If,
   For,
 }
+
+Collect: Statement = {
+  "collect" <e:Expression> => Statement::Collect(e.into()),
+}
+
+Break: Statement = "break" => Statement::Break;
+Continue: Statement = "continue" => Statement::Continue;
 
 Definition: Statement = {
   <t:Type> <id:Identifier> "=" <s:Expression> => Statement::Definition(t, id, s),
@@ -167,7 +170,9 @@ Assignment: Statement = {
   <id:Identifier> "=" <s:Expression> => Statement::Assignment(id, s),
 }
 
-Return: Statement = "return" <s:Expression> => Statement::Return(s.into());
+Return: Statement = "return" <s:Expression> => {
+  Statement::Return(s.into())
+};
 
 StatementCall: Statement = {
   <id:Identifier> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
@@ -208,6 +213,8 @@ Attribute: (String, Vec<Node>) = {
 }
 
 ElementBody: Node = {
+  <f:For> => Node::Logic(f),
+  <i:If> => Node::Logic(i),
   Insertion,
   Element,
   <s:Str> => Node::Text(s),

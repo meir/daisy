@@ -11,6 +11,8 @@ use super::{
 #[derive(Clone)]
 pub enum Statement {
     Collect(Expression),
+    Continue,
+    Break,
     Call(String, Vec<Expression>),
     Definition(Type, String, Expression),
     Assignment(String, Expression),
@@ -20,16 +22,22 @@ pub enum Statement {
     ForLoop(Box<Statement>, Expression, Box<Statement>, Vec<Statement>),
 }
 
+pub enum ResultType {
+    Collect(Vec<Value>),
+    Return(Value),
+    Break,
+    Continue,
+    NOP,
+}
+
 impl Statement {
-    pub fn process(&self, ctx: &mut Context, scope: &mut Scope) -> Result<(bool, Value), Error> {
+    pub fn process(&self, ctx: &mut Context, scope: &mut Scope) -> Result<ResultType, Error> {
         match self {
+            Statement::Continue => Ok(ResultType::Continue),
+            Statement::Break => Ok(ResultType::Break),
             Statement::Collect(expression) => {
                 let value = expression.to_value(ctx, scope);
-                if value.get_type() == Type::Nil {
-                    Ok((false, Value::Nil))
-                } else {
-                    Ok((false, value))
-                }
+                Ok(ResultType::Collect(vec![value]))
             }
             Statement::Call(name, args) => {
                 let value = scope
@@ -37,44 +45,60 @@ impl Statement {
                     .cloned()
                     .unwrap_or_else(|| panic!("Function '{}' not defined", name));
                 call_function(ctx, &value, args, scope);
-                Ok((false, Value::Nil))
+                Ok(ResultType::NOP)
             }
             Statement::Definition(type_, name, expression) => {
                 let value = expression.to_value(ctx, scope);
                 scope.define(type_.clone(), name.clone(), value);
-                Ok((false, Value::Nil))
+                Ok(ResultType::NOP)
             }
             Statement::Assignment(name, expression) => {
                 let value = expression.to_value(ctx, scope);
                 scope.set(name.clone(), value);
-                Ok((false, Value::Nil))
+                Ok(ResultType::NOP)
             }
             Statement::Return(expression) => {
                 let value = expression.to_value(ctx, scope);
-                Ok((true, value))
+                Ok(ResultType::Return(value))
             }
             Statement::If(condition, statements) => {
                 let condition_value = condition.to_value(ctx, scope);
-                match condition_value {
-                    Value::Bool(true) => scope.wrap(|inner_scope| {
+                if let Value::Bool(true) = condition_value {
+                    scope.wrap(|inner_scope| {
+                        let mut collected_values = vec![];
                         for stmt in statements {
-                            match stmt.process(ctx, inner_scope) {
-                                Ok((true, value)) => {
-                                    return Ok((true, value));
+                            let result = stmt.process(ctx, inner_scope);
+                            match result {
+                                Ok(ResultType::Return(value)) => {
+                                    return Ok(ResultType::Return(value));
                                 }
-                                Ok((false, _)) => {}
-                                Err(err) => {
-                                    panic!("Error processing statement: {:?}", err);
+                                Ok(ResultType::Break) => {
+                                    return Ok(ResultType::Break);
+                                }
+                                Ok(ResultType::Continue) => {
+                                    return Ok(ResultType::Continue);
+                                }
+                                Ok(ResultType::Collect(values)) => {
+                                    collected_values.extend(values);
+                                }
+                                _ => {
+                                    // Continue processing statements
                                 }
                             }
                         }
-                        Ok((false, Value::Nil))
-                    }),
-                    Value::Bool(false) => Ok((false, Value::Nil)),
-                    _ => panic!(
-                        "Condition in if statement must be a boolean, got {}",
+                        if collected_values.is_empty() {
+                            Ok(ResultType::NOP)
+                        } else {
+                            Ok(ResultType::Collect(collected_values))
+                        }
+                    })
+                } else if let Value::Bool(false) = condition_value {
+                    Ok(ResultType::NOP)
+                } else {
+                    panic!(
+                        "Expected a boolean condition for 'if', got {}",
                         condition_value.get_type()
-                    ),
+                    );
                 }
             }
             Statement::For(id, var, statements) => scope.wrap(|inner_scope| {
@@ -87,21 +111,38 @@ impl Statement {
                             .cmp(&b.parse::<i64>().unwrap_or(0))
                     });
 
-                    for key in keys {
+                    let mut collected_values = vec![];
+                    inner_scope.define(Type::Any, id.clone(), Value::Nil);
+                    'mainloop: for key in keys {
                         let item = list.get(&key).cloned().unwrap_or(Value::Nil);
                         inner_scope.set(id.clone(), item);
 
                         for stmt in statements {
                             match stmt.process(ctx, inner_scope) {
-                                Ok((true, value)) => {
-                                    return Ok((true, value));
+                                Ok(ResultType::Return(value)) => {
+                                    return Ok(ResultType::Return(value));
                                 }
-                                Ok((false, _)) => {}
+                                Ok(ResultType::Break) => {
+                                    return Ok(ResultType::Break);
+                                }
+                                Ok(ResultType::Continue) => {
+                                    continue 'mainloop;
+                                }
+                                Ok(ResultType::Collect(values)) => {
+                                    collected_values.extend(values);
+                                }
                                 Err(err) => {
                                     panic!("Error processing statement: {:?}", err);
                                 }
+                                _ => {}
                             }
                         }
+                    }
+
+                    if collected_values.is_empty() {
+                        return Ok(ResultType::NOP);
+                    } else {
+                        return Ok(ResultType::Collect(collected_values));
                     }
                 } else {
                     panic!(
@@ -109,32 +150,46 @@ impl Statement {
                         var.get_type()
                     );
                 }
-                Ok((false, Value::Nil))
             }),
             Statement::ForLoop(init, condition, increment, statements) => {
                 scope.wrap(|inner_scope| {
                     init.process(ctx, inner_scope)?;
 
-                    loop {
+                    let mut collected_values = vec![];
+                    'mainloop: loop {
                         if let Value::Bool(false) = condition.to_value(ctx, inner_scope) {
                             break;
                         }
 
                         for stmt in statements {
                             match stmt.process(ctx, inner_scope) {
-                                Ok((true, value)) => {
-                                    return Ok((true, value));
+                                Ok(ResultType::Return(value)) => {
+                                    return Ok(ResultType::Return(value));
                                 }
-                                Ok((false, _)) => {}
+                                Ok(ResultType::Break) => {
+                                    return Ok(ResultType::Break);
+                                }
+                                Ok(ResultType::Continue) => {
+                                    continue 'mainloop;
+                                }
+                                Ok(ResultType::Collect(values)) => {
+                                    collected_values.extend(values);
+                                }
                                 Err(err) => {
                                     panic!("Error processing statement: {:?}", err);
                                 }
+                                _ => {}
                             }
 
                             increment.process(ctx, inner_scope)?;
                         }
                     }
-                    Ok((false, Value::Nil))
+
+                    if collected_values.is_empty() {
+                        Ok(ResultType::NOP)
+                    } else {
+                        Ok(ResultType::Collect(collected_values))
+                    }
                 })
             }
         }
