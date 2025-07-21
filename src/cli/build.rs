@@ -11,13 +11,13 @@ pub fn build(ctx: &mut Context) {
     let resources = resolver::get_all(ctx);
     for rs in resources {
         match &*rs.borrow() {
-            Resource::File(file, env) => {
+            Resource::File(file) => {
                 if !file.is_page {
                     continue;
                 }
 
-                let output_path = if env.get("url").is_some() {
-                    let url = env.get("url").unwrap_or_else(|| {
+                let output_path = if file.scope.get("url").is_some() {
+                    let url = file.scope.get("url").unwrap_or_else(|| {
                         panic!(
                             "File {} does not have an output path defined",
                             file.src.to_str().unwrap()
@@ -33,7 +33,7 @@ pub fn build(ctx: &mut Context) {
                     Resource::get_output_path(ctx, &file.src.to_str().unwrap()).unwrap()
                 };
 
-                let mut env = env.clone();
+                let mut env = file.scope.clone();
                 let content = &file.process(ctx, &env).render(ctx, &mut env);
                 let output = ctx.save_content(output_path.to_str().unwrap(), content);
                 println!("[DAISY] Built {} -> {}", file.src.to_str().unwrap(), output);
@@ -46,9 +46,9 @@ pub fn build(ctx: &mut Context) {
     let resources = resolver::get_all(ctx);
     for rs in resources {
         match &*rs.borrow() {
-            Resource::SCSS(path, content) => {
+            Resource::SCSS(src, path, content) => {
                 let output = ctx.save_content(path, content);
-                println!("[SCSS] Built SCSS {} -> {}", path, output);
+                println!("[SCSS] Built SCSS {} -> {}", src, output);
             }
             Resource::Other(src, output) => {
                 std::fs::create_dir_all(Path::new(output).parent().unwrap()).unwrap_or_else(

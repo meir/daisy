@@ -1,7 +1,9 @@
 
+func holder = use("component/title_holder")
+
 return (str title) element {
   return : h1.imported {
-    @{title} "-" @{url} "-" @{meta.url}
+    @{holder(title)}
   }
 }
 

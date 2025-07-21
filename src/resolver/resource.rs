@@ -3,14 +3,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{ast::environment::Scope, context::Context};
+use crate::context::Context;
 
 use super::file::File;
 
 #[derive(Clone)]
 pub enum Resource {
-    File(File, Scope),
-    SCSS(String, String),
+    File(File),
+    SCSS(String, String, String),
     Other(String, String),
 }
 

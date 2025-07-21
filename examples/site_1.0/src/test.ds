@@ -6,6 +6,7 @@ meta {
 str title = "Website 1.0"
 
 str line_content = "This is a list item"
+str css = use("assets/main.scss")
 
 element line = : li > @{line_content}
 
@@ -18,6 +19,7 @@ element list = : ul {
 return : html {
   head {
     title > @{title}
+    link rel="stylesheet" href=@{css};
   }
 
   body {

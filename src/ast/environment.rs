@@ -244,13 +244,31 @@ impl Scope {
         self.define(
             Type::Function,
             name,
-            Value::ScopedFunction(self.clone(), func, vec![], return_type, vec![]),
+            Value::Function(func, vec![], return_type, vec![]),
         );
     }
 
     pub fn define(&mut self, type_: Type, name: String, value: Value) {
         if self.variables[self.current_scope].contains_key(&name) {
             panic!("Value {} already defined in this scope", name);
+        }
+        if !Type::matches(&type_, &value) {
+            panic!("Type mismatch: expected {}, got {}", type_, value);
+        }
+        self.variables[self.current_scope].insert(name, (type_, value));
+    }
+
+    pub fn set_meta(&mut self, value: Value) {
+        self.overwrite(Type::Map, "meta".into(), value);
+    }
+
+    pub fn get_meta(&self) -> Option<&Value> {
+        self.get_from_scope("meta", self.current_scope)
+    }
+
+    pub fn overwrite(&mut self, type_: Type, name: String, value: Value) {
+        if self.variables[self.current_scope].contains_key(&name) {
+            self.variables[self.current_scope].remove(&name);
         }
         if !Type::matches(&type_, &value) {
             panic!("Type mismatch: expected {}, got {}", type_, value);

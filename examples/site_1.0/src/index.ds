@@ -7,6 +7,8 @@ func title = () str {
   return std.format("{} - {}", "Hello world!", meta.url)
 }
 
+func h1 = use("component/title")
+
 str css = use("assets/main.scss")
 
 arr headers = [
@@ -25,7 +27,7 @@ return : html {
     meta charset="UTF-8";
   }
   body {
-    @{header(std.hello_world())}
+    @{h1("cool beans")}
     div > @{term}
     div > img src=@{cat_pic} alt="A cute cat";
     ul {

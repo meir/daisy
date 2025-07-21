@@ -5,10 +5,6 @@ use std::{
     rc::Rc,
 };
 
-use crate::ast::{
-    builtin,
-    environment::{Scope, Type},
-};
 use resource::Resource;
 use walkdir::WalkDir;
 
@@ -33,7 +29,7 @@ pub fn load_dir(ctx: &mut Context) {
 
         let mut resource = file.borrow_mut();
 
-        if let Resource::File(file, _) = &mut *resource {
+        if let Resource::File(file) = &mut *resource {
             file.is_page = true;
         } else {
             panic!(
@@ -51,9 +47,9 @@ pub fn get_all(ctx: &mut Context) -> Vec<Rc<RefCell<Resource>>> {
 pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>, String> {
     let src = Path::new(ctx.config.paths.workdir.as_str()).join(src);
     if let Some(rs) = ctx.resources.iter().find(|rs| match &*rs.borrow() {
-        Resource::File(file, _) => file.src == src,
-        Resource::SCSS(src_file, _) => Path::new(src_file) == src,
-        Resource::Other(src_file, _) => Path::new(src_file) == src,
+        Resource::File(file) => file.src == src,
+        Resource::SCSS(src_file, _, _) => src_file == src.to_str().unwrap(),
+        Resource::Other(src_file, _) => src_file == src.to_str().unwrap(),
     }) {
         Ok(rs.clone())
     } else {
@@ -61,13 +57,8 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
             match ext.to_str() {
                 Some("ds") => {
                     let file = file::File::load_absolute(ctx, src.to_str().unwrap());
-                    let meta_value = file.meta.to_value(ctx, &mut Scope::new());
 
-                    let mut env = Scope::new();
-                    env.define(Type::Map, "meta".into(), meta_value);
-                    builtin::init(&mut env);
-
-                    let rc = Rc::new(RefCell::new(Resource::File(file, env)));
+                    let rc = Rc::new(RefCell::new(Resource::File(file)));
                     ctx.resources.push(rc.clone());
                     Ok(rc)
                 }
@@ -88,6 +79,7 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
                             .unwrap();
 
                     let rc = Rc::new(RefCell::new(Resource::SCSS(
+                        src.to_str().unwrap().to_string(),
                         path.to_str().unwrap().to_string(),
                         css.unwrap(),
                     )));

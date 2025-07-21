@@ -18,18 +18,22 @@ pub fn builtin_use(
     }
 
     if let Value::Str(import) = &inputs[0] {
-        let meta = env.get("meta");
-
         let resource = resolver::get_file(ctx, import.clone());
         match &*resource.unwrap().borrow() {
-            Resource::File(file, scope) => {
-                let mut scope = scope.clone();
+            Resource::File(file) => {
+                let meta = env.get_meta();
+                let mut scope = file.scope.clone();
                 if let Some(meta) = meta {
-                    scope.set("meta".to_string(), meta.clone());
+                    scope.set_meta(meta.clone());
+                } else {
+                    panic!(
+                        "File {} does not have a meta defined",
+                        file.src.to_str().unwrap()
+                    );
                 }
                 default_function(ctx, &file.ast, &vec![], &mut scope)
             }
-            Resource::SCSS(path, _) => {
+            Resource::SCSS(_, path, _) => {
                 let relative_path = Resource::get_relative_path(ctx, path).unwrap().to_string();
                 Value::Str(relative_path)
             }

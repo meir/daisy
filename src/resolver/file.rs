@@ -1,4 +1,5 @@
-use crate::ast::environment::{Scope, Value};
+use crate::ast::builtin;
+use crate::ast::environment::{Scope, Type, Value};
 use crate::ast::statement::Statement;
 use crate::ast::{expression::Expression, function::default_function};
 use crate::context::Context;
@@ -16,6 +17,7 @@ pub struct File {
 
     pub meta: Expression,
     pub ast: Vec<Statement>,
+    pub scope: Scope,
 }
 
 impl File {
@@ -28,12 +30,21 @@ impl File {
             .parse(content.as_str())
             .unwrap_or_else(|err| Self::error_message(src.as_ref(), err, &content));
 
+        let meta = ast.0.to_value(ctx, &mut Scope::new());
+
+        let mut env = Scope::new();
+        if meta.get_type() == Type::Map {
+            env.set_meta(meta);
+        }
+        builtin::init(&mut env);
+
         File {
             src: src.as_ref().to_path_buf(),
             is_page: false,
 
             meta: ast.0,
             ast: ast.1,
+            scope: env,
         }
     }
 
