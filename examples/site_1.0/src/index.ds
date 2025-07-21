@@ -22,6 +22,7 @@ str cat_pic = use("assets/images/cat.png")
 return : html {
   head { 
     @{headers}
+    meta charset="UTF-8";
   }
   body {
     @{header(std.hello_world())}

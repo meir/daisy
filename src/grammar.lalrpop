@@ -16,7 +16,13 @@ pub Daisy: (Expression, Vec<Statement>) = {
 // Meta
 
 Meta: Expression = {
-  "meta" "{" <def:Definition*> "}" => Expression::Map(def),
+  <i:Identifier> "{" <def:Definition*> "}" => {
+    if i == "meta" {
+      Expression::Map(def)
+    } else {
+      panic!("Meta identifier must be 'meta', found '{}'", i);
+    }
+  }
 }
 
 // Types / Identifiers
@@ -85,13 +91,6 @@ Term: Expression = {
   },
   <id:Identifier> <sub:("."<Identifier>)*> => {
     let mut path = vec![id];
-    for s in sub {
-      path.push(s);
-    }
-    Expression::Identifier(path)
-  },
-  "meta" <sub:("."<Identifier>)*> => { // Special case for meta access
-    let mut path = vec!["meta".to_string()];
     for s in sub {
       path.push(s);
     }
