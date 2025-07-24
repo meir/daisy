@@ -1,46 +1,40 @@
+use super::expression::Expression;
 use super::statement::Statement;
 use crate::ast::node::Node;
 use crate::context::Context;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub enum Value {
-    Str(String),
-    Num(i64),
+    String(String),
+    Number(i64),
     Float(f64),
     Bool(bool),
-    Element(Box<Node>),
-    ScopedElement(Scope, Box<Node>),
+    Element(Rc<Node>),
     Function(
         fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
-        Vec<Statement>,
+        Rc<Vec<(Type, String, Option<Expression>)>>,
         Type,
-        Vec<Statement>,
-    ),
-    ScopedFunction(
-        Scope,
-        fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
-        Vec<Statement>,
-        Type,
-        Vec<Statement>,
+        Rc<Vec<Statement>>,
     ),
     Map(Scope),
     Array(Scope),
     Nil,
+
+    Scoped(Scope, Box<Value>),
 }
 
 impl Value {
     pub fn render(&self, ctx: &mut Context, scope: &mut Scope) -> String {
         match self {
-            Value::Str(s) => s.clone(),
-            Value::Num(n) => n.to_string(),
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
             Value::Float(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
-            Value::Element(node) => node.render(ctx, scope),
-            Value::ScopedElement(scope, element) => element.render(ctx, &mut scope.clone()),
+            Value::Element(node) => node(ctx, scope),
             Value::Function(..) => "".into(),
-            Value::ScopedFunction(..) => "".into(),
             Value::Map(scope) => {
                 let mut scope = scope.clone();
                 let keys = &scope.get_keys();
@@ -64,22 +58,22 @@ impl Value {
                 output
             }
             Value::Nil => "nil".to_string(),
+            Value::Scoped(scope, value) => value.render(ctx, &mut scope.clone()),
         }
     }
 
     pub fn get_type(&self) -> Type {
         match &self {
-            Value::Str(_) => Type::Str,
-            Value::Num(_) => Type::Num,
+            Value::String(_) => Type::String,
+            Value::Number(_) => Type::Number,
             Value::Float(_) => Type::Float,
             Value::Bool(_) => Type::Bool,
             Value::Element(_) => Type::Element,
-            Value::ScopedElement(_, _) => Type::Element,
             Value::Function(..) => Type::Function,
-            Value::ScopedFunction(..) => Type::Function,
             Value::Map(..) => Type::Map,
             Value::Array(..) => Type::Array,
             Value::Nil => Type::Nil,
+            Value::Scoped(_, value) => value.get_type(),
         }
     }
 
@@ -91,8 +85,8 @@ impl Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Value::Str(l), Value::Str(r)) => l == r,
-            (Value::Num(l), Value::Num(r)) => l == r,
+            (Value::String(l), Value::String(r)) => l == r,
+            (Value::Number(l), Value::Number(r)) => l == r,
             (Value::Float(l), Value::Float(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::Nil, Value::Nil) => true,
@@ -105,25 +99,24 @@ impl PartialEq for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Str(s) => write!(f, "str\"{}\"", s),
-            Value::Num(n) => write!(f, "num({})", n),
+            Value::String(s) => write!(f, "str\"{}\"", s),
+            Value::Number(n) => write!(f, "num({})", n),
             Value::Float(n) => write!(f, "float({})", n),
             Value::Bool(b) => write!(f, "bool({})", b),
             Value::Element(_) => write!(f, "element()"),
-            Value::ScopedElement(_, _) => write!(f, "scoped_element()"),
             Value::Function(..) => write!(f, "function()"),
-            Value::ScopedFunction(..) => write!(f, "scoped_function()"),
             Value::Map(..) => write!(f, "Map()"),
             Value::Array(..) => write!(f, "Array()"),
             Value::Nil => write!(f, "nil"),
+            Value::Scoped(_, value) => write!(f, "Scoped({})", value),
         }
     }
 }
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum Type {
-    Str,
-    Num,
+    String,
+    Number,
     Float,
     Bool,
     Element,
@@ -137,18 +130,17 @@ pub enum Type {
 impl Type {
     pub fn matches(type_: &Type, value: &Value) -> bool {
         match (type_, value) {
-            (Type::Str, Value::Str(_)) => true,
-            (Type::Num, Value::Num(_)) => true,
+            (Type::String, Value::String(_)) => true,
+            (Type::Number, Value::Number(_)) => true,
             (Type::Float, Value::Float(_)) => true,
             (Type::Bool, Value::Bool(_)) => true,
             (Type::Element, Value::Element(_)) => true,
-            (Type::Element, Value::ScopedElement(_, _)) => true,
             (Type::Function, Value::Function(..)) => true,
-            (Type::Function, Value::ScopedFunction(..)) => true,
             (Type::Map, Value::Map(_)) => true,
             (Type::Array, Value::Array(_)) => true,
             (_, Value::Nil) => true,
             (Type::Any, _) => true,
+            (_, Value::Scoped(_, value)) => Type::matches(type_, value),
             _ => false,
         }
     }
@@ -157,8 +149,8 @@ impl Type {
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Str => write!(f, "String"),
-            Type::Num => write!(f, "Integer"),
+            Type::String => write!(f, "String"),
+            Type::Number => write!(f, "Integer"),
             Type::Float => write!(f, "Float"),
             Type::Bool => write!(f, "Boolean"),
             Type::Element => write!(f, "Element"),
@@ -244,7 +236,7 @@ impl Scope {
         self.define(
             Type::Function,
             name,
-            Value::Function(func, vec![], return_type, vec![]),
+            Value::Function(func, vec![].into(), return_type, vec![].into()),
         );
     }
 

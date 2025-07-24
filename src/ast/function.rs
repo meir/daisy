@@ -3,7 +3,7 @@ use crate::context::Context;
 use super::{
     environment::{Scope, Type, Value},
     expression::Expression,
-    statement::{ResultType, Statement},
+    statement::{Result, Statement},
 };
 
 pub fn call_function(
@@ -16,24 +16,31 @@ pub fn call_function(
         panic!("Expected a function, got {}", value.get_type());
     }
 
-    let args: Vec<Value> = args.iter().map(|arg| arg.to_value(ctx, scope)).collect();
+    let args: Vec<Value> = args.iter().map(|arg| arg(ctx, scope)).collect();
 
     match value {
         Value::Function(func, params, return_type, body) => {
             run_function(ctx, func, params, return_type, &args, body, scope)
         }
-        Value::ScopedFunction(scope_func, func, params, return_type, body) => {
-            // create a new scope for the function call
-            let mut inner_scope = scope_func.clone();
-            run_function(
-                ctx,
-                func,
-                params,
-                return_type,
-                &args,
-                body,
-                &mut inner_scope,
-            )
+        Value::Scoped(scope, value) => {
+            if let Value::Function(func, params, return_type, body) = value.as_ref() {
+                // create a new scope for the function call
+                let mut inner_scope = scope.clone();
+                run_function(
+                    ctx,
+                    func,
+                    params,
+                    return_type,
+                    &args,
+                    body,
+                    &mut inner_scope,
+                )
+            } else {
+                panic!(
+                    "Expected a function in scoped value, got {}",
+                    value.get_type()
+                );
+            }
         }
         _ => Value::Nil,
     }
@@ -42,7 +49,7 @@ pub fn call_function(
 fn run_function(
     ctx: &mut Context,
     func: &fn(&mut Context, &Vec<Statement>, &Vec<Value>, &mut Scope) -> Value,
-    params: &Vec<Statement>,
+    params: &Vec<(Type, String, Option<Expression>)>,
     return_type: &Type,
     args: &Vec<Value>,
     body: &Vec<Statement>,
@@ -50,7 +57,12 @@ fn run_function(
 ) -> Value {
     scope.wrap(|inner_scope| {
         for param in params {
-            param.process(ctx, inner_scope).unwrap();
+            inner_scope.define(param.0.clone(), param.1.clone(), Value::Nil);
+            if let Some(expr) = &param.2 {
+                // If the parameter has a default value, evaluate it
+                let default_value = expr(ctx, inner_scope);
+                inner_scope.set(param.1.clone(), default_value);
+            }
         }
 
         // set arguments in scope with variables given in call
@@ -58,11 +70,7 @@ fn run_function(
             for i in 0..args.len() {
                 let arg = args.get(i).unwrap();
                 let param = params.get(i).unwrap();
-                if let Statement::Definition(_, name, _) = param {
-                    inner_scope.set(name.clone(), arg.clone());
-                } else {
-                    panic!("Expected a definition node")
-                }
+                inner_scope.set(param.1.clone(), arg.clone());
             }
         }
 
@@ -87,27 +95,24 @@ pub fn default_function(
     scope: &mut Scope,
 ) -> Value {
     for stmt in stmts {
-        match stmt.process(ctx, scope) {
-            Ok(ResultType::Return(value)) => {
+        match stmt(ctx, scope) {
+            Result::Return(value) => {
                 return value;
             }
-            Ok(ResultType::Collect(value)) => {
+            Result::Collect(value) => {
                 let mut array = Scope::new();
                 for val in value {
                     array.array_push(val);
                 }
                 return Value::Array(array);
             }
-            Ok(ResultType::Break) => {
+            Result::Break => {
                 panic!("Break statement outside of loop");
             }
-            Ok(ResultType::Continue) => {
+            Result::Continue => {
                 panic!("Continue statement outside of loop");
             }
-            Err(err) => {
-                panic!("Error processing statement: {:?}", err);
-            }
-            Ok(ResultType::NOP) => {
+            Result::NOP => {
                 // Do nothing, continue processing
             }
         }

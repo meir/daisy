@@ -1,0 +1,6 @@
+
+str url = meta.url
+
+return (str title) str {
+  return std.format("{} - {}", title, url) 
+}

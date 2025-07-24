@@ -8,7 +8,7 @@ pub fn builtin_pages(
     ctx: &mut Context,
     _: &Vec<Statement>,
     _: &Vec<Value>,
-    scope: &mut Scope,
+    _scope: &mut Scope,
 ) -> Value {
     let mut array = Scope::new();
 
@@ -19,7 +19,10 @@ pub fn builtin_pages(
             if !file.is_page {
                 continue; // Skip non-page files
             }
-            array.define(Type::Map, index.to_string(), file.meta.to_value(ctx, scope));
+
+            let page_details = file.get_scope(ctx);
+
+            array.define(Type::Map, index.to_string(), Value::Map(page_details));
             index += 1;
         }
     }

@@ -15,14 +15,14 @@ pub fn builtin_format(
         );
     }
 
-    if let Value::Str(src) = &inputs[0] {
+    if let Value::String(src) = &inputs[0] {
         let mut src = src.clone();
         for i in 1..inputs.len() {
             let value = inputs.get(i).unwrap();
             let str = value.render(ctx, scope);
             src = src.replacen("{}", str.as_str(), 1);
         }
-        Value::Str(src)
+        Value::String(src)
     } else {
         panic!(
             "Expected a string argument for 'format', got {}",

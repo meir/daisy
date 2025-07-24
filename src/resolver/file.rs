@@ -1,7 +1,7 @@
 use crate::ast::builtin;
 use crate::ast::environment::{Scope, Type, Value};
+use crate::ast::expression::Expression;
 use crate::ast::statement::Statement;
-use crate::ast::{expression::Expression, function::default_function};
 use crate::context::Context;
 use crate::grammar::Token;
 use lalrpop_util::ParseError;
@@ -10,14 +10,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Clone)]
+use super::resource::Resource;
+
 pub struct File {
     pub src: PathBuf,
     pub is_page: bool,
 
-    pub meta: Expression,
+    pub meta: Option<Expression>,
     pub ast: Vec<Statement>,
-    pub scope: Scope,
 }
 
 impl File {
@@ -30,26 +30,45 @@ impl File {
             .parse(content.as_str())
             .unwrap_or_else(|err| Self::error_message(src.as_ref(), err, &content));
 
-        let meta = ast.0.to_value(ctx, &mut Scope::new());
-
-        let mut env = Scope::new();
-        if meta.get_type() == Type::Map {
-            env.set_meta(meta);
-        }
-        builtin::init(&mut env);
-
         File {
             src: src.as_ref().to_path_buf(),
             is_page: false,
 
             meta: ast.0,
             ast: ast.1,
-            scope: env,
         }
     }
 
-    pub fn process(&self, ctx: &mut Context, scope: &Scope) -> Value {
-        default_function(ctx, &self.ast, &vec![], &mut scope.clone())
+    pub fn get_scope(&self, ctx: &mut Context) -> Scope {
+        let mut default_meta = Scope::new();
+        let output_path = Resource::get_output_path(ctx, &self.src.to_str().unwrap())
+            .unwrap_or_else(|_| {
+                panic!("Failed to get output path for file: {}", self.src.display())
+            });
+        let relative_path = Resource::get_relative_path(ctx, output_path.to_str().unwrap())
+            .unwrap_or_else(|_| {
+                panic!(
+                    "Failed to get relative path for file: {}",
+                    self.src.display()
+                )
+            });
+        default_meta.define(Type::String, "url".into(), Value::String(relative_path));
+
+        let meta = if let Some(meta) = &self.meta {
+            let value = meta(ctx, &mut Scope::new());
+            if let Value::Map(meta) = value {
+                meta
+            } else {
+                default_meta
+            }
+        } else {
+            default_meta
+        };
+
+        let mut scope = Scope::new();
+        scope.set_meta(Value::Map(meta));
+        builtin::init(&mut scope);
+        scope
     }
 
     fn position_to_line_column(input: &str, pos: usize) -> (usize, usize) {

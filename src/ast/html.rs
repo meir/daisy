@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use super::environment::Scope;
 
-#[derive(Clone)]
 pub struct Element {
     tag: String,
     attributes: HashMap<String, Vec<Node>>,
@@ -47,7 +46,7 @@ impl Element {
             .map(|(k, v)| {
                 let value = v
                     .iter()
-                    .map(|node| node.render(ctx, scope))
+                    .map(|node| node(ctx, scope))
                     .collect::<Vec<String>>()
                     .join(" ");
                 (k.clone(), value)
@@ -66,7 +65,7 @@ impl Element {
         };
 
         for node in &self.content {
-            output.push_str(node.render(ctx, scope).as_str());
+            output.push_str(node(ctx, scope).as_str());
         }
         output.push_str(&format!("</{}>", self.tag));
         output

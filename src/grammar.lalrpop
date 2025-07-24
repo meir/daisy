@@ -1,221 +1,288 @@
 use std::str::FromStr;
-use crate::ast::node::Node;
 use crate::ast::environment::{Type, Value};
-use crate::ast::html::Element;
-use crate::ast::expression::Expression;
+use crate::ast::{expression, expression::Expression};
+use crate::ast::{statement, statement::Statement};
+use crate::ast::{node, node::Node};
 use crate::ast::function::default_function;
-use crate::ast::statement::Statement;
 
 grammar;
 
-pub Daisy: (Expression, Vec<Statement>) = {
-  <body:Statement*> => (Expression::Map(vec![]), body),
-  <meta:Meta> <body:Statement*> => (meta, body),
+pub Daisy: (Option<Expression>, Vec<Statement>) = {
+  <meta:Meta?> <body:Statement*> => (meta, body),
 };
 
-// Meta
+// keywords
 
-Meta: Expression = {
-  <i:Identifier> "{" <def:Definition*> "}" => {
-    if i == "meta" {
-      Expression::Map(def)
-    } else {
-      panic!("Meta identifier must be 'meta', found '{}'", i);
-    }
-  }
+KeyIf = "if";
+KeyFor = "for";
+KeyMeta = "meta";
+KeyCollect = "collect";
+KeyBreak = "break";
+KeyContinue = "continue";
+KeyReturn = "return";
+
+KeyIdentifier: &'input str = <string:r"[A-Za-z_][A-Za-z0-9_-]*"> => string;
+
+KeyValueTrue = "true";
+KeyValueFalse = "false";
+KeyValueNil = "nil";
+
+KeyTypeString = "str";
+KeyTypeNumber = "num";
+KeyTypeFloat = "float";
+KeyTypeBool = "bool";
+KeyTypeElement = "element";
+KeyTypeFunction = "func";
+KeyTypeMap = "map";
+KeyTypeArray = "list";
+
+Keyword = {
+  KeyIf,
+  KeyFor,
+  KeyMeta,
+  KeyCollect,
+  KeyBreak,
+  KeyContinue,
+  KeyReturn,
+
+  KeyIdentifier,
+
+  KeyValueTrue,
+  KeyValueFalse,
+  KeyValueNil,
+
+  KeyTypeString,
+  KeyTypeNumber,
+  KeyTypeFloat,
+  KeyTypeBool,
+  KeyTypeElement,
+  KeyTypeFunction,
+  KeyTypeMap,
+  KeyTypeArray,
+};
+
+KeyVariableName = {
+  KeyIdentifier,
+  KeyMeta,
 }
 
-// Types / Identifiers
+// types
 
-Identifier: String = <s:r"[A-Za-z_][A-Za-z0-9_-]*"> => s.to_string();
+TypeString: Type = KeyTypeString => Type::String;
+TypeNumber: Type = KeyTypeNumber => Type::Number;
+TypeFloat: Type = KeyTypeFloat => Type::Float;
+TypeBool: Type = KeyTypeBool => Type::Bool;
+TypeElement: Type = KeyTypeElement => Type::Element;
+TypeFunction: Type = KeyTypeFunction => Type::Function;
+TypeMap: Type = KeyTypeMap => Type::Map;
+TypeArray: Type = KeyTypeArray => Type::Array;
 
 Type: Type = {
-  "str" => Type::Str,
-  "num" => Type::Num,
-  "float" => Type::Float,
-  "bool" => Type::Bool,
-  "element" => Type::Element,
-  "func" => Type::Function,
-  "map" => Type::Map,
-  "arr" => Type::Array,
+  TypeString,
+  TypeNumber,
+  TypeFloat,
+  TypeBool,
+  TypeElement,
+  TypeFunction,
+  TypeMap,
+  TypeArray,
+};
+
+// Operations
+
+OpEqual = "==";
+OpNotEqual = "!=";
+OpOr = "||";
+OpAnd = "&&";
+OpLessThan = "<";
+OpLessThanOrEqual = "<=";
+OpGreaterThan = ">";
+OpGreaterThanOrEqual = ">=";
+
+OpAdd = "+";
+OpSubtract = "-";
+
+OpMultiply = "*";
+OpDivide = "/";
+
+// meta
+
+Meta: Expression = {
+  KeyMeta <map:ExpressionMap> => map,
+};
+
+
+// Shorthands
+
+Definition: (Type, String, Option<Expression>) = {
+  <type_:Type> <identifier:KeyVariableName> "=" <expression:Expression> => (type_, identifier.into(), Some(expression)),
+  <type_:Type> <identifier:KeyVariableName> => (type_, identifier.into(), None),
+};
+
+FunctionParameters: Vec<(Type, String, Option<Expression>)> = {
+  <mut parameters:(<Definition> ",")*> <last:Definition?> => {
+    if let Some(last) = last {
+      parameters.push(last);
+    }
+    parameters
+  },
+};
+
+Function: (Vec<(Type, String, Option<Expression>)>, Type, Vec<Statement>) = {
+  "(" <parameters:FunctionParameters> ")" <return_type:Type> "{" <body:Statement*> "}" => {
+    (parameters, return_type, body)
+  },
 }
 
-Str: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
-Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
-Float: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
-Bool: bool = {
-  "true" => true,
-  "false" => false,
-};
-Nil: Value = "nil" => Value::Nil;
+// Value
 
-// Expressions
-
-Expression: Expression = {
-  <l:Expression> "==" <r:Calc> => Expression::Equal(Box::new(l), Box::new(r)),
-  <l:Expression> "!=" <r:Calc> => Expression::NotEqual(Box::new(l), Box::new(r)),
-  <l:Expression> "||" <r:Calc> => Expression::Or(Box::new(l), Box::new(r)),
-  <l:Expression> "&&" <r:Calc> => Expression::And(Box::new(l), Box::new(r)),
-  <l:Expression> "<" <r:Calc> => Expression::LessThan(Box::new(l), Box::new(r)),
-  <l:Expression> "<=" <r:Calc> => Expression::LessThanOrEqual(Box::new(l), Box::new(r)),
-  <l:Expression> ">" <r:Calc> => Expression::GreaterThan(Box::new(l), Box::new(r)),
-  <l:Expression> ">=" <r:Calc> => Expression::GreaterThanOrEqual(Box::new(l), Box::new(r)),
-  ExpressionCall,
-  Calc,
+RawValueString: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
+RawValueNumber: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
+RawValueFloat: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
+RawValueBool: bool = {
+  KeyValueTrue => true,
+  KeyValueFalse => false,
 };
 
-Calc: Expression = {
-  <l:Calc> "+" <r:Factor> => Expression::Addition(Box::new(l), Box::new(r)),
-  <l:Calc> "-" <r:Factor> => Expression::Subtraction(Box::new(l), Box::new(r)),
-  Factor,
-};
-
-Factor: Expression = {
-  <l:Factor> "*" <r:Term> => Expression::Multiplication(Box::new(l), Box::new(r)),
-  <l:Factor> "/" <r:Term> => Expression::Division(Box::new(l), Box::new(r)),
-  Term,
-};
-
-
-Term: Expression = {
-  "(" <Expression> ")",
-  <v:Value> => Expression::Value(v),
-  "{" <def:Definition*> "}" => Expression::Map(def),
-  "[" <args:(<Expression> ",")*> <arg:Expression?> "]" => {
-    let mut args = args;
-    if let Some(a) = arg {
-      args.push(a);
-    }
-    let args: Vec<Box<Expression>> = args.into_iter().map(|e| e.into()).collect();
-    Expression::Array(args)
-  },
-  <id:Identifier> <sub:("."<Identifier>)*> => {
-    let mut path = vec![id];
-    for s in sub {
-      path.push(s);
-    }
-    Expression::Identifier(path)
-  },
-  <s:Script> => Expression::Script(s),
-};
-
-Script: String = "$"<s:r#"`([^`\\]|\\.)*`"#> => s[1..s.len()-1].to_string();
+ValueString: Value = <s:RawValueString> => Value::String(s);
+ValueNumber: Value = <n:RawValueNumber> => Value::Number(n);
+ValueFloat: Value = <f:RawValueFloat> => Value::Float(f);
+ValueBool: Value = <b:RawValueBool> => Value::Bool(b);
+ValueNil: Value = KeyValueNil => Value::Nil;
+ValueFunction: Value = <function:Function> => Value::Function(default_function, function.0.into(), function.1, function.2.into());
+ValueElement: Value = ":" <element:NodeElement> => Value::Element(element.into());
 
 Value: Value = {
-  <s:Str> => Value::Str(s),
-  <n:Num> => Value::Num(n),
-  <f:Float> => Value::Float(f),
-  <b:Bool> => Value::Bool(b),
-  Nil,
-  ":" <e:Element> => Value::Element(e.into()),
-  Function,
-}
-
-ExpressionCall: Expression = {
-  <e:Expression> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
-    let mut args = args;
-    if let Some(a) = arg {
-      args.push(a);
-    }
-    Expression::Call(e.into(), args)
-  },
-}
-
-// Function Expression
-
-FunctionParameters: Vec<Statement> = {
-  <args:(<Definition> ",")*> <f:Definition?> => {
-    let mut params = args;
-    if let Some(f) = f {
-      params.push(f);
-    }
-    params
-  },
-}
-
-Function: Value = {
-  "(" <args:FunctionParameters> ")" <return_type:Type> "{" <body:Statement*> "}" => {
-    Value::Function(default_function, args, return_type, body)
-  },
-}
-
-// Statements
-
-Statement: Statement = {
-  Collect,
-  Break,
-  Continue,
-  Definition,
-  Assignment,
-  Return,
-  StatementCall,
-  If,
-  For,
-}
-
-Collect: Statement = {
-  "collect" <e:Expression> => Statement::Collect(e.into()),
-}
-
-Break: Statement = "break" => Statement::Break;
-Continue: Statement = "continue" => Statement::Continue;
-
-Definition: Statement = {
-  <t:Type> <id:Identifier> "=" <s:Expression> => Statement::Definition(t, id, s),
-  <t:Type> <id:Identifier> => Statement::Definition(t, id, Expression::Nil),
-}
-
-Assignment: Statement = {
-  <id:Identifier> "=" <s:Expression> => Statement::Assignment(id, s),
-}
-
-Return: Statement = "return" <s:Expression> => {
-  Statement::Return(s.into())
+  ValueString,
+  ValueNumber,
+  ValueFloat,
+  ValueBool,
+  ValueNil,
+  ValueFunction,
+  ValueElement,
 };
 
-StatementCall: Statement = {
-  <id:Identifier> "(" <args:(<Expression> ",")*> <arg:Expression?> ")" => {
-    let mut args = args;
-    if let Some(a) = arg {
-      args.push(a);
-    }
-    Statement::Call(id, args)
+
+// expressions
+
+Expression: Expression = {
+  <left:Expression> OpEqual <right:ExpressionCalculus> => expression::equal(left.into(), right.into()),
+  <left:Expression> OpNotEqual <right:ExpressionCalculus> => expression::notequal(left.into(), right.into()),
+  <left:Expression> OpOr <right:ExpressionCalculus> => expression::or(left.into(), right.into()),
+  <left:Expression> OpAnd <right:ExpressionCalculus> => expression::and(left.into(), right.into()),
+  <left:Expression> OpLessThan <right:ExpressionCalculus> => expression::lessthan(left.into(), right.into()),
+  <left:Expression> OpLessThanOrEqual <right:ExpressionCalculus> => expression::lessthanorequal(left.into(), right.into()),
+  <left:Expression> OpGreaterThan <right:ExpressionCalculus> => expression::greaterthan(left.into(), right.into()),
+  <left:Expression> OpGreaterThanOrEqual <right:ExpressionCalculus> => expression::greaterthanorequal(left.into(), right.into()),
+
+  ExpressionCall,
+  ExpressionCalculus,
+};
+
+ExpressionCalculus: Expression = {
+  <left:ExpressionCalculus> OpAdd <right:ExpressionFactor> => expression::addition(left.into(), right.into()),
+  <left:ExpressionCalculus> OpSubtract <right:ExpressionFactor> => expression::subtraction(left.into(), right.into()),
+
+  ExpressionFactor,
+};
+
+ExpressionFactor: Expression = {
+  <left:ExpressionFactor> OpMultiply <right:ExpressionTerm> => expression::multiplication(left.into(), right.into()),
+  <left:ExpressionFactor> OpDivide <right:ExpressionTerm> => expression::division(left.into(), right.into()),
+
+  ExpressionTerm,
+};
+
+ExpressionTerm: Expression = {
+  "(" <Expression> ")",
+  ExpressionValue,
+  ExpressionMap,
+  ExpressionArray,
+  ExpressionIdentifier,
+  ExpressionScript,
+};
+
+ExpressionValue: Expression = <value:Value> => expression::value(value);
+ExpressionMap: Expression = "{" <definitions:Definition*> "}" => expression::map(definitions);
+ExpressionArray: Expression = "[" <mut entries:(<Expression> ",")*> <last:Expression?> "]" => {
+  if let Some(last) = last {
+    entries.push(last);
   }
+  expression::array(entries)
+};
+ExpressionIdentifier: Expression = <location:KeyVariableName> <subsequent:("." <KeyVariableName>)*> => expression::identifier({
+  let mut location = vec![location.to_string()];
+  location.append(&mut subsequent.iter().map(|s| s.to_string()).collect());
+  location
+});
+ExpressionCall: Expression = <function:Expression> "(" <mut arguments:(<Expression> ",")*> <last_argument:Expression?> ")" => {
+  if let Some(last) = last_argument {
+    arguments.push(last);
+  }
+  expression::call(function.into(), arguments)
+};
+ExpressionScript: Expression = "$"<script:r#"`([^`\\]|\\.)*`"#> => expression::script(script[1..script.len()-1].to_string().into());
+
+
+// statements
+
+StatementCollect: Statement = KeyCollect <expression:Expression> => statement::collect(expression.into());
+StatementBreak: Statement = KeyBreak => statement::break_statement();
+StatementContinue: Statement = KeyContinue => statement::continue_statement();
+StatementReturn: Statement = {
+  KeyReturn <expression:Expression> => statement::return_statement(Some(expression)),
+  KeyReturn ";" => statement::return_statement(None),
+};
+
+StatementIf: Statement = KeyIf <condition:Expression> "{" <body:Statement*> "}" => statement::if_statement(condition.into(), body);
+StatementFor: Statement = KeyFor <identifier:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::for_statement(identifier.into(), collection, body);
+StatementLoop: Statement = KeyFor <init:StatementDefinition> ";" <condition:Expression> ";" <increment:StatementAssign> "{" <body:Statement*> "}" => statement::loop_statement(init, condition, increment, body);
+StatementDefinition: Statement = <definition:Definition> => statement::define(definition.0, definition.1, definition.2);
+StatementAssign: Statement = <identifier:KeyVariableName> "=" <expression:Expression> => statement::assign(identifier.into(), expression.into());
+StatementCall: Statement = <function:ExpressionIdentifier> "(" <mut arguments:(<Expression> ",")*> <last_argument:Expression?> ")" => {
+  if let Some(last) = last_argument {
+    arguments.push(last);
+  }
+  statement::call(function.into(), arguments)
+};
+
+Statement: Statement = {
+  StatementReturn,
+  StatementCollect,
+
+  StatementIf,
+  StatementFor,
+  StatementLoop,
+  StatementDefinition,
+  StatementAssign,
+  StatementCall,
+};
+
+// html
+
+NodeElement: Node = {
+  <identifier:KeyVariableName> <attributes:NodeAttribute*> "{" <children:Node*> "}" => node::element(identifier.into(), attributes, children),
+  <identifier:KeyVariableName> <attributes:NodeAttribute*> ">" <child:Node> => node::element(identifier.into(), attributes, vec![child]),
+  <identifier:KeyVariableName> <attributes:NodeAttribute*> ";" => node::element(identifier.into(), attributes, vec![]),
+};
+
+NodeAttribute: (String, Vec<Node>) = {
+  "#" <identifier:Keyword> => ("id".into(), vec![node::text(identifier.into())]),
+  "." <identifier:Keyword> => ("class".into(), vec![node::text(identifier.into())]),
+  <identifier:Keyword> "=" "(" <value:Expression> ")" => (identifier.into(), vec![node::logic_expression(value)]),
+  <identifier:Keyword> "=" <value:ExpressionValue> => (identifier.into(), vec![node::logic_expression(value)]),
+};
+
+NodeText: Node = <string:RawValueString> => node::text(string);
+
+NodeInsert: Node = "@" "{" <expression:Expression> "}" => node::insert(expression.into());
+
+Node: Node = {
+  <for_loop:StatementFor> => node::logic_statement(for_loop),
+  <iter_loop:StatementLoop> => node::logic_statement(iter_loop),
+  <if_statement:StatementIf> => node::logic_statement(if_statement),
+  
+  NodeElement,
+  NodeInsert,
+  NodeText,
 }
-
-If: Statement = {
-  "if" <condition:Expression> "{" <body:Statement*> "}" => Statement::If(condition, body),
-}
-
-For: Statement = {
-  "for" <id:Identifier> "in" <iterable:Expression> "{" <body:Statement*> "}" => Statement::For(id, iterable, body),
-  "for" <init:Definition> ";" <comp:Expression> ";" <step:Statement> "{" <body:Statement*> "}" => Statement::ForLoop(init.into(), comp, step.into(), body),
-}
-
-// html related rules
-
-Insertion: Node = {
-  "@" "{" <e:Expression> "}" => Node::Insertion(e),
-}
-
-Element: Node = {
-  <id:Identifier> <attrs:Attribute*> "{" <body:ElementBody*> "}" => Node::Element(Element::new(id, attrs, body)),
-  <id:Identifier> <attrs:Attribute*> ">" <body:ElementBody> => Node::Element(Element::new(id, attrs, vec![body])),
-  <id:Identifier> <attrs:Attribute*> ";" => Node::Element(Element::new(id, attrs, vec![])),
-}
-
-Attribute: (String, Vec<Node>) = {
-  "#" <id:Identifier> => ("id".to_string(), vec![Node::Text(id)]),
-  "." <id:Identifier> => ("class".to_string(), vec![Node::Text(id)]),
-  <id:Identifier> "=" <s:Str> => (id, vec![Node::Text(s)]),
-  <id:Identifier> "=" <i:Insertion> => (id, vec![i]),
-}
-
-ElementBody: Node = {
-  <f:For> => Node::Logic(f),
-  <i:If> => Node::Logic(i),
-  Insertion,
-  Element,
-  <s:Str> => Node::Text(s),
-}
-

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::ast::environment::Value;
+use crate::ast::function::default_function;
 use crate::context::Context;
 use crate::resolver::{self, resource::Resource};
 
@@ -8,44 +9,44 @@ pub fn build(ctx: &mut Context) {
     resolver::load_dir(ctx);
 
     // Process pages
-    let resources = resolver::get_all(ctx);
-    for rs in resources {
-        match &*rs.borrow() {
-            Resource::File(file) => {
-                if !file.is_page {
-                    continue;
-                }
+    resolver::get_all(ctx).iter().for_each(|resource| {
+        if let Resource::File(file) = &*resource.borrow() {
+            if !file.is_page {
+                return;
+            }
 
-                let output_path = if file.scope.get("url").is_some() {
-                    let url = file.scope.get("url").unwrap_or_else(|| {
-                        panic!(
-                            "File {} does not have an output path defined",
-                            file.src.to_str().unwrap()
-                        )
-                    });
-                    let url = match url {
-                        Value::Str(url) => url.to_string(),
-                        _ => panic!("Expected a string for output path, got {}", url.get_type()),
-                    };
+            let mut scope = file.get_scope(ctx);
 
-                    Resource::get_output_path(ctx, url.as_str()).unwrap()
-                } else {
-                    Resource::get_output_path(ctx, &file.src.to_str().unwrap()).unwrap()
+            let output_path = if scope.get("url").is_some() {
+                let url = scope.get("url").unwrap_or_else(|| {
+                    panic!(
+                        "File {} does not have an output path defined",
+                        file.src.to_str().unwrap()
+                    )
+                });
+                let url = match url {
+                    Value::String(url) => url.to_string(),
+                    _ => panic!("Expected a string for output path, got {}", url.get_type()),
                 };
 
-                let mut env = file.scope.clone();
-                let content = &file.process(ctx, &env).render(ctx, &mut env);
-                let output = ctx.save_content(output_path.to_str().unwrap(), content);
-                println!("[DAISY] Built {} -> {}", file.src.to_str().unwrap(), output);
-            }
-            _ => {}
+                Resource::get_output_path(ctx, url.as_str()).unwrap()
+            } else {
+                Resource::get_output_path(ctx, &file.src.to_str().unwrap()).unwrap()
+            };
+
+            let content = default_function(ctx, &file.ast, &vec![], &mut scope.clone());
+            let content = content.render(ctx, &mut scope);
+            let output = ctx.save_content(output_path.to_str().unwrap(), content.as_str());
+            println!("[DAISY] Built {} -> {}", file.src.to_str().unwrap(), output);
+        } else {
+            panic!("Expected a File resource for page");
         }
-    }
+    });
 
     // after pages have been process, new resources have been added, process these resources
-    let resources = resolver::get_all(ctx);
-    for rs in resources {
-        match &*rs.borrow() {
+    resolver::get_all(ctx)
+        .iter()
+        .for_each(|resource| match &*resource.borrow() {
             Resource::SCSS(src, path, content) => {
                 let output = ctx.save_content(path, content);
                 println!("[SCSS] Built SCSS {} -> {}", src, output);
@@ -66,6 +67,5 @@ pub fn build(ctx: &mut Context) {
                 println!("[ASSET] Copied {} -> {}", src, output);
             }
             _ => {}
-        }
-    }
+        });
 }

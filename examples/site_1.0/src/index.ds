@@ -11,9 +11,9 @@ func h1 = use("component/title")
 
 str css = use("assets/main.scss")
 
-arr headers = [
+list headers = [
   : title > @{title()},
-  : link rel="stylesheet" href=@{css};
+  : link rel="stylesheet" href=(css);
 ]
 
 func header = use("component/title")
@@ -29,7 +29,7 @@ return : html {
   body {
     @{h1("cool beans")}
     div > @{term}
-    div > img src=@{cat_pic} alt="A cute cat";
+    div > img src=(cat_pic) alt="A cute cat";
     ul {
       for page in std.pages() {
         if page.url == "/" {

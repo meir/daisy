@@ -7,7 +7,6 @@ use crate::context::Context;
 
 use super::file::File;
 
-#[derive(Clone)]
 pub enum Resource {
     File(File),
     SCSS(String, String, String),
