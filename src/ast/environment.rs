@@ -41,7 +41,8 @@ impl Value {
                 let mut output = String::new();
                 for key in keys {
                     if let Some(value) = scope.clone().get(&key) {
-                        output.push_str(&value.render(ctx, &mut scope))
+                        let result = &value.render(ctx, &mut scope);
+                        output.push_str(format!("{}; {}\n", key, result).as_str())
                     }
                 }
                 output

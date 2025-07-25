@@ -20,9 +20,10 @@ pub fn builtin_pages(
                 continue; // Skip non-page files
             }
 
-            let page_details = file.get_scope(ctx);
+            let page_scope = file.get_scope(ctx);
+            let meta = page_scope.get_meta();
 
-            array.define(Type::Map, index.to_string(), Value::Map(page_details));
+            array.define(Type::Map, index.to_string(), meta.unwrap().clone());
             index += 1;
         }
     }

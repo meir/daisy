@@ -5,33 +5,30 @@ use crate::ast::expression::Expression;
 pub fn if_statement(condition: Expression, body: Vec<Statement>) -> Statement {
     Box::new(move |ctx, scope| {
         let condition_value = condition(ctx, scope);
+        let mut collected_values = vec![];
+        let mut result = Result::NOP;
         if let Value::Bool(true) = condition_value {
-            scope.wrap(|inner_scope| {
-                let mut collected_values = vec![];
+            result = scope.wrap(|inner_scope| {
                 for stmt in body.iter() {
                     let result = stmt(ctx, inner_scope);
                     match result {
                         Result::Collect(values) => {
                             collected_values.extend(values);
                         }
+                        Result::NOP => {}
                         _ => {
                             return result;
                         }
                     }
                 }
-                if collected_values.is_empty() {
-                    Result::NOP
-                } else {
-                    Result::Collect(collected_values)
-                }
-            })
-        } else if let Value::Bool(false) = condition_value {
-            Result::NOP
+                return Result::NOP;
+            });
+        }
+
+        if collected_values.is_empty() {
+            result
         } else {
-            panic!(
-                "Expected a boolean condition for 'if', got {}",
-                condition_value.get_type()
-            );
+            Result::Collect(collected_values)
         }
     })
 }
