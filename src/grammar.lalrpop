@@ -111,7 +111,6 @@ Meta: Expression = {
   KeyMeta <map:ExpressionMap> => map,
 };
 
-
 // Shorthands
 
 Definition: (Type, String, Option<Expression>) = {
@@ -136,7 +135,22 @@ Function: (Vec<(Type, String, Option<Expression>)>, Type, Vec<Statement>) = {
 
 // Value
 
-RawValueString: String = <s:r#""([^"\\]|\\.)*""#> => s[1..s.len()-1].to_string();
+RawValueString: String = {
+  <s:r#""([^"\\\n]|\\.)*""#> => s[1..s.len()-1].to_string().replace("\\n", "\n"),
+  <s:r#"\''([^\\]|\\.|\\\n)*\''"#> => {
+    let s = s.to_string();
+    let inner = &s[2..s.len()-2];
+    let lines: Vec<&str> = inner.lines().collect();
+    let indent = lines.iter()
+      .filter(|l| !l.trim().is_empty())
+      .map(|l| l.chars().take_while(|c| c.is_whitespace()).count())
+      .min().unwrap_or(0);
+    let lines = lines.into_iter()
+      .map(|l| if l.len() >= indent { &l[indent..] } else { l })
+      .collect::<Vec<_>>();
+    lines[1..lines.len()-1].join("\n")
+  }
+};
 RawValueNumber: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
 RawValueFloat: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
 RawValueBool: bool = {
