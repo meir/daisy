@@ -137,7 +137,7 @@ Function: (Vec<(Type, String, Option<Expression>)>, Type, Vec<Statement>) = {
 
 RawValueString: String = {
   <s:r#""([^"\\\n]|\\.)*""#> => s[1..s.len()-1].to_string().replace("\\n", "\n"),
-  <s:r#"''([^\\']|\\.|\\\n)*''"#> => {
+  <s:r#"''([^\\]|\\.|\\\n)*''"#> => {
     let s = s.to_string();
     let inner = &s[2..s.len()-2];
     let lines: Vec<&str> = inner.lines().collect();
