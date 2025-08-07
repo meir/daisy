@@ -8,6 +8,13 @@ use crate::ast::strings::{parse_string, parse_multiline_string};
 
 grammar;
 
+match {
+  r"\/\/[^\n]*" => {}, // single line comment
+  r"\/\*([^*]|\*[^\/])*\*\/" => {}, // multi line comment
+  r"\s*" => {}, // whitespace
+  _
+}
+
 pub Daisy: (Option<Expression>, Vec<Statement>) = {
   <meta:Meta?> <body:Statement*> => (meta, body),
 };
@@ -109,7 +116,7 @@ OpDivide = "/";
 // meta
 
 Meta: Expression = {
-  KeyMeta <map:ExpressionMap> => map,
+  (KeyMeta) <map:ExpressionMap> => map,
 };
 
 // Shorthands
@@ -129,16 +136,20 @@ FunctionParameters: Vec<(Type, String, Option<Expression>)> = {
 };
 
 Function: (Vec<(Type, String, Option<Expression>)>, Type, Vec<Statement>) = {
-  "(" <parameters:FunctionParameters> ")" <return_type:Type> "{" <body:Statement*> "}" => {
-    (parameters, return_type, body)
+  "(" <parameters:FunctionParameters> ")" <return_type:Type?> "{" <body:Statement*> "}" => {
+    if let Some(return_type) = return_type {
+      (parameters, return_type, body)
+    } else {
+      (parameters, Type::Nil, body)
+    }
   },
 }
 
 // Value
 
 RawValueString: String = {
-  <string:r#""([^"\\\n]|\\.)*""#> => parse_string(string),
-  <string:r#"''(([^\\']|['][^']|)|\\.|\\\n)*''"#> => parse_multiline_string(string), 
+  <string:r#""(\\.|[^"\n])*""#> => parse_string(string),
+  <string:r#"''(\\.|'?[^'])*''"#> => parse_multiline_string(string), 
 };
 RawValueNumber: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
 RawValueFloat: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
@@ -169,29 +180,29 @@ Value: Value = {
 // expressions
 
 Expression: Expression = {
-  <left:Expression> OpEqual <right:ExpressionCalculus> => expression::equal(left.into(), right.into()),
-  <left:Expression> OpNotEqual <right:ExpressionCalculus> => expression::notequal(left.into(), right.into()),
-  <left:Expression> OpOr <right:ExpressionCalculus> => expression::or(left.into(), right.into()),
-  <left:Expression> OpAnd <right:ExpressionCalculus> => expression::and(left.into(), right.into()),
-  <left:Expression> OpLessThan <right:ExpressionCalculus> => expression::lessthan(left.into(), right.into()),
-  <left:Expression> OpLessThanOrEqual <right:ExpressionCalculus> => expression::lessthanorequal(left.into(), right.into()),
-  <left:Expression> OpGreaterThan <right:ExpressionCalculus> => expression::greaterthan(left.into(), right.into()),
-  <left:Expression> OpGreaterThanOrEqual <right:ExpressionCalculus> => expression::greaterthanorequal(left.into(), right.into()),
+  <left:Expression> (OpEqual) <right:ExpressionCalculus> => expression::equal(left.into(), right.into()),
+  <left:Expression> (OpNotEqual) <right:ExpressionCalculus> => expression::notequal(left.into(), right.into()),
+  <left:Expression> (OpOr) <right:ExpressionCalculus> => expression::or(left.into(), right.into()),
+  <left:Expression> (OpAnd) <right:ExpressionCalculus> => expression::and(left.into(), right.into()),
+  <left:Expression> (OpLessThan) <right:ExpressionCalculus> => expression::lessthan(left.into(), right.into()),
+  <left:Expression> (OpLessThanOrEqual) <right:ExpressionCalculus> => expression::lessthanorequal(left.into(), right.into()),
+  <left:Expression> (OpGreaterThan) <right:ExpressionCalculus> => expression::greaterthan(left.into(), right.into()),
+  <left:Expression> (OpGreaterThanOrEqual) <right:ExpressionCalculus> => expression::greaterthanorequal(left.into(), right.into()),
 
   ExpressionCall,
   ExpressionCalculus,
 };
 
 ExpressionCalculus: Expression = {
-  <left:ExpressionCalculus> OpAdd <right:ExpressionFactor> => expression::addition(left.into(), right.into()),
-  <left:ExpressionCalculus> OpSubtract <right:ExpressionFactor> => expression::subtraction(left.into(), right.into()),
+  <left:ExpressionCalculus> (OpAdd) <right:ExpressionFactor> => expression::addition(left.into(), right.into()),
+  <left:ExpressionCalculus> (OpSubtract) <right:ExpressionFactor> => expression::subtraction(left.into(), right.into()),
 
   ExpressionFactor,
 };
 
 ExpressionFactor: Expression = {
-  <left:ExpressionFactor> OpMultiply <right:ExpressionTerm> => expression::multiplication(left.into(), right.into()),
-  <left:ExpressionFactor> OpDivide <right:ExpressionTerm> => expression::division(left.into(), right.into()),
+  <left:ExpressionFactor> (OpMultiply) <right:ExpressionTerm> => expression::multiplication(left.into(), right.into()),
+  <left:ExpressionFactor> (OpDivide) <right:ExpressionTerm> => expression::division(left.into(), right.into()),
 
   ExpressionTerm,
 };
@@ -229,17 +240,17 @@ ExpressionScript: Expression = "$"<script:r#"`([^`\\]|\\.)*`"#> => expression::s
 
 // statements
 
-StatementCollect: Statement = KeyCollect <expression:Expression> => statement::collect(expression.into());
+StatementCollect: Statement = (KeyCollect) <expression:Expression> => statement::collect(expression.into());
 StatementBreak: Statement = KeyBreak => statement::break_statement();
 StatementContinue: Statement = KeyContinue => statement::continue_statement();
 StatementReturn: Statement = {
-  KeyReturn <expression:Expression> => statement::return_statement(Some(expression)),
-  KeyReturn ";" => statement::return_statement(None),
+  (KeyReturn) <expression:Expression> => statement::return_statement(Some(expression)),
+  (KeyReturn) ";" => statement::return_statement(None),
 };
 
-StatementIf: Statement = KeyIf <condition:Expression> "{" <body:Statement*> "}" => statement::if_statement(condition.into(), body);
-StatementIter: Statement = KeyFor <identifier:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement(identifier.into(), collection, body);
-StatementFor: Statement = KeyFor <init:StatementDefinition> ";" <condition:Expression> ";" <increment:StatementAssign> "{" <body:Statement*> "}" => statement::for_statement(init, condition, increment, body);
+StatementIf: Statement = (KeyIf) <condition:Expression> "{" <body:Statement*> "}" => statement::if_statement(condition.into(), body);
+StatementIter: Statement = (KeyFor) <identifier:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement(identifier.into(), collection, body);
+StatementFor: Statement = (KeyFor) <init:StatementDefinition> ";" <condition:Expression> ";" <increment:StatementAssign> "{" <body:Statement*> "}" => statement::for_statement(init, condition, increment, body);
 StatementDefinition: Statement = <definition:Definition> => statement::define(definition.0, definition.1, definition.2);
 StatementAssign: Statement = <identifier:KeyVariableName> "=" <expression:Expression> => statement::assign(identifier.into(), expression.into());
 StatementCall: Statement = <function:ExpressionIdentifier> "(" <mut arguments:(<Expression> ",")*> <last_argument:Expression?> ")" => {

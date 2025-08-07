@@ -1,6 +1,10 @@
 meta {
-  str url = "/"
+  str url = "/" // cool comment
 }
+
+/*
+  cool comment
+*/
 
 
 func title = () str {

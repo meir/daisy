@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use super::{Result, Statement};
 use crate::ast::environment::{Type, Value};
 use crate::ast::expression::Expression;

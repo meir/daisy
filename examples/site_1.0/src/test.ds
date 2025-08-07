@@ -4,6 +4,7 @@ meta {
 }
 
 str title = "Website 1.0"
+use("assets/main.scss")
 
 str line_content = "This is a list item"
 str css = use("assets/main.scss")
@@ -30,6 +31,7 @@ return : html {
     @{lines}
     p > ''
       test
+      \''
     ''
   }
 }

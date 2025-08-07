@@ -5,18 +5,13 @@ use crate::ast::function::call_function;
 
 pub fn call(identifier: Expression, arguments: Vec<Expression>) -> Statement {
     Box::new(move |ctx, scope| {
-        let binding = scope.clone();
         let function = identifier(ctx, scope);
-        let function = if let Value::String(name) = function {
-            name
+        if let Value::Function(..) = function {
+            call_function(ctx, &function, &arguments, scope);
         } else {
-            panic!("Expected a function name as a string, got {}", function);
+            panic!("Expected a function, got {}", function);
         };
 
-        let value = binding
-            .get(function.as_str())
-            .unwrap_or_else(|| panic!("Function '{}' not defined", function));
-        call_function(ctx, &value, &arguments, scope);
         Result::NOP
     })
 }
