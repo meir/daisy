@@ -3,7 +3,6 @@ meta {
   str url = "/test"
 }
 
-str title = "Website 1.0"
 use("assets/main.scss")
 
 str line_content = "This is a list item"
@@ -17,9 +16,30 @@ element lines = : ul {
   @{line}
 }
 
+map titles = {
+  str A = "Title A"
+  str B = "Title B"
+  str C = "Title C"
+}
+
+std.println("Titles map: ")
+for key in titles {
+  std.println(key)
+  std.println(titles[key])
+}
+
+list x = [
+  "hello",
+  "world"
+]
+for i in x {
+  std.println(i)
+  std.println(x[i])
+}
+
 return : html {
   head {
-    title > @{title}
+    title > @{titles["A"]}
     link rel="stylesheet" href=(css);
   }
 

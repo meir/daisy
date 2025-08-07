@@ -1,4 +1,4 @@
-use crate::ast::environment::{Scope, Type, Value};
+use crate::ast::environment::{Scope, Value};
 
 use super::Expression;
 
@@ -10,17 +10,6 @@ pub fn array(items: Vec<Expression>) -> Expression {
         for value in values.into_iter() {
             array.array_push(value);
         }
-
-        array.define_builtin_function(
-            "get".into(),
-            |_, _, inputs, scope| -> Value {
-                scope
-                    .get(&inputs[0].to_string())
-                    .cloned()
-                    .unwrap_or(Value::Nil)
-            },
-            Type::Any,
-        );
 
         Value::Array(array)
     })

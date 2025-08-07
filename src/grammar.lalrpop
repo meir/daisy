@@ -190,6 +190,7 @@ Expression: Expression = {
   <left:Expression> (OpGreaterThanOrEqual) <right:ExpressionCalculus> => expression::greaterthanorequal(left.into(), right.into()),
 
   ExpressionCall,
+  ExpressionScopeEntry,
   ExpressionCalculus,
 };
 
@@ -224,6 +225,7 @@ ExpressionArray: Expression = "[" <mut entries:(<Expression> ",")*> <last:Expres
   }
   expression::array(entries)
 };
+ExpressionScopeEntry: Expression = <scope:Expression> "[" <entry:Expression> "]" => expression::scope_entry(scope.into(), entry.into());
 ExpressionIdentifier: Expression = <location:KeyVariableName> <subsequent:("." <KeyVariableName>)*> => expression::identifier({
   let mut location = vec![location.to_string()];
   location.append(&mut subsequent.iter().map(|s| s.to_string()).collect());
