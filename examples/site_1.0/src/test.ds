@@ -32,9 +32,8 @@ list x = [
   "hello",
   "world"
 ]
-for i in x {
-  std.println(i)
-  std.println(x[i])
+for _, value in x {
+  std.println(value)
 }
 
 return : html {

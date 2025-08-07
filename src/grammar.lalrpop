@@ -251,7 +251,10 @@ StatementReturn: Statement = {
 };
 
 StatementIf: Statement = (KeyIf) <condition:Expression> "{" <body:Statement*> "}" => statement::if_statement(condition.into(), body);
-StatementIter: Statement = (KeyFor) <identifier:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement(identifier.into(), collection, body);
+StatementIter: Statement = {
+  (KeyFor) <key:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement((key.into(), None), collection, body),
+  (KeyFor) <key:KeyVariableName> "," <value:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement((key.into(), Some(value.into())), collection, body),
+};
 StatementFor: Statement = (KeyFor) <init:StatementDefinition> ";" <condition:Expression> ";" <increment:StatementAssign> "{" <body:Statement*> "}" => statement::for_statement(init, condition, increment, body);
 StatementDefinition: Statement = <definition:Definition> => statement::define(definition.0, definition.1, definition.2);
 StatementAssign: Statement = <identifier:KeyVariableName> "=" <expression:Expression> => statement::assign(identifier.into(), expression.into());
