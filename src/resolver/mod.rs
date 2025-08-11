@@ -108,7 +108,20 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
             if with_ext.exists() {
                 get_file(ctx, with_ext.to_str().unwrap().to_string())
             } else {
-                get_file(ctx, src.to_str().unwrap().to_string())
+                let relative_path =
+                    Resource::get_relative_path_from_root(ctx, src.to_str().unwrap())
+                        .map_err(|err| format!("Failed to get relative path: {}", err))?;
+
+                let output = Resource::get_output_path(ctx, &relative_path)
+                    .map_err(|err| format!("Failed to get output path: {}", err))?;
+
+                let rc = Rc::new(RefCell::new(Resource::Other(
+                    src.to_str().unwrap().to_string(),
+                    output.to_str().unwrap().to_string(),
+                )));
+
+                ctx.resources.push(rc.clone());
+                Ok(rc)
             }
         }
     }
