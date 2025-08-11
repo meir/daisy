@@ -108,10 +108,7 @@ pub fn get_file(ctx: &mut Context, src: String) -> Result<Rc<RefCell<Resource>>,
             if with_ext.exists() {
                 get_file(ctx, with_ext.to_str().unwrap().to_string())
             } else {
-                panic!(
-                    "File not found: {}. Please ensure the file exists or has the correct extension.",
-                    src.display()
-                );
+                get_file(ctx, src.to_str().unwrap().to_string())
             }
         }
     }
