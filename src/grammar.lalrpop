@@ -290,6 +290,7 @@ NodeAttribute: (String, Vec<Node>) = {
   "." <identifier:Keyword> => ("class".into(), vec![node::text(identifier.into())]),
   <identifier:Keyword> "=" "(" <value:Expression> ")" => (identifier.into(), vec![node::logic_expression(value)]),
   <identifier:Keyword> "=" <value:ExpressionValue> => (identifier.into(), vec![node::logic_expression(value)]),
+  <identifier:Keyword> => (identifier.into(), vec![]),
 };
 
 NodeText: Node = <string:RawValueString> => node::text(string);
