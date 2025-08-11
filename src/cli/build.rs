@@ -17,8 +17,8 @@ pub fn build(ctx: &mut Context) {
 
             let mut scope = file.get_scope(ctx);
 
-            let output_path = if scope.get("url").is_some() {
-                let url = scope.get("url").unwrap_or_else(|| {
+            let output_path = if let Some(Value::Map(meta)) = scope.get("meta") {
+                let url = meta.get("url").unwrap_or_else(|| {
                     panic!(
                         "File {} does not have an output path defined",
                         file.src.to_str().unwrap()
