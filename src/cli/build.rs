@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use crate::ast::environment::Value;
 use crate::ast::function::default_function;
 use crate::context::Context;
 use crate::resolver::{self, resource::Resource};
@@ -17,17 +16,10 @@ pub fn build(ctx: &mut Context) {
 
             let mut scope = file.get_scope(ctx);
 
-            let output_path = if let Some(Value::Map(meta)) = scope.get("meta") {
-                let url = meta.get("url").unwrap_or_else(|| {
-                    panic!(
-                        "File {} does not have an output path defined",
-                        file.src.to_str().unwrap()
-                    )
-                });
-                let url = match url {
-                    Value::String(url) => url.to_string(),
-                    _ => panic!("Expected a string for output path, got {}", url.get_type()),
-                };
+            let output_path = if let Some(meta) = scope.get("meta") {
+                let meta = meta.clone().try_into_map().unwrap();
+                let url = meta.get("url").unwrap();
+                let url = url.clone().try_into_string().unwrap();
 
                 Resource::get_output_path(ctx, url.as_str()).unwrap()
             } else {

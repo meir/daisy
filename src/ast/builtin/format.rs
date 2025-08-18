@@ -19,8 +19,22 @@ pub fn builtin_format(
         let mut src = src.clone();
         for i in 1..inputs.len() {
             let value = inputs.get(i).unwrap();
-            let str = value.render(ctx, scope);
-            src = src.replacen("{}", str.as_str(), 1);
+            match value.clone() {
+                Value::String(str) => src = src.replacen("{}", str.as_str(), 1),
+                Value::Number(num) => src = src.replacen("{}", &num.to_string(), 1),
+                Value::Bool(bool) => src = src.replacen("{}", &bool.to_string(), 1),
+                Value::Map(mut map) => {
+                    let keys = map.get_keys();
+                    for key in keys {
+                        if let Some(val) = map.get(&key) {
+                            src = src.replace(&format!("{{{}}}", key), &val.to_string());
+                        } else {
+                            panic!("Key '{}' not found in map", key);
+                        }
+                    }
+                }
+                _ => panic!("Unsupported type for 'format': {}", value.get_type()),
+            }
         }
         Value::String(src)
     } else {
