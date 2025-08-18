@@ -27,7 +27,7 @@ pub fn builtin_format(
                     let keys = map.get_keys();
                     for key in keys {
                         if let Some(val) = map.get(&key) {
-                            src = src.replace(&format!("{{{}}}", key), &val.to_string());
+                            src = src.replace(&format!("{{{}}}", key), &val.render(ctx, scope));
                         } else {
                             panic!("Key '{}' not found in map", key);
                         }
