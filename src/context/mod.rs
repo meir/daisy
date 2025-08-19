@@ -102,6 +102,7 @@ impl Context {
         });
 
         fs::write(&output_path, content).unwrap_or_else(|err| {
+            println!("{}", content);
             panic!("Failed to write file: {}: {}", path, err);
         });
 

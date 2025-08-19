@@ -32,6 +32,7 @@ return : html {
   }
   body {
     @{h1("cool beans")}
+    a href=(use("LICENSE_TEST")) > "License"
     div > @{term}
     div > img src=(cat_pic) alt="A cute cat";
     ul {
