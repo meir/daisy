@@ -4,10 +4,11 @@ use crate::{grammar::DaisyParser, resolver::resource::Resource};
 use log::warn;
 use serde::Deserialize;
 
+#[derive(Clone)]
 pub struct Context {
-    pub parser: DaisyParser,
+    pub parser: Rc<RefCell<DaisyParser>>,
     pub resources: Vec<Rc<RefCell<Resource>>>,
-    pub config: Config,
+    pub config: Rc<RefCell<Config>>,
 }
 
 #[derive(Deserialize)]

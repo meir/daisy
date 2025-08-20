@@ -14,7 +14,7 @@ pub enum Resource {
 }
 
 impl Resource {
-    pub fn get_output_path(ctx: &mut Context, src: &str) -> Result<PathBuf, Error> {
+    pub fn get_output_path(ctx: &Context, src: &str) -> Result<PathBuf, Error> {
         let mut path = Path::new(src);
         path = path.strip_prefix(ctx.get_page_path()).unwrap_or(path);
 
@@ -52,8 +52,9 @@ impl Resource {
         }
     }
 
-    pub fn get_relative_path_from_root(ctx: &mut Context, src: &str) -> Result<String, Error> {
-        if let Some(relative_path) = src.strip_prefix(&ctx.config.paths.workdir) {
+    pub fn get_relative_path_from_root(ctx: &Context, src: &str) -> Result<String, Error> {
+        let config = ctx.config.borrow();
+        if let Some(relative_path) = src.strip_prefix(&config.paths.workdir) {
             return Ok(format!("/{}", relative_path));
         } else {
             panic!("Failed to strip workdir from path: {}", src);
