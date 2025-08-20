@@ -1,10 +1,10 @@
 use std::str::FromStr;
-use crate::ast::environment::{Type, Value};
-use crate::ast::{expression, expression::Expression};
-use crate::ast::{statement, statement::Statement};
-use crate::ast::{node, node::Node};
-use crate::ast::function::default_function;
-use crate::ast::strings::{parse_string, parse_multiline_string};
+use crate::ast2::environment::{Type, Value};
+use crate::ast2::{expression, expression::Expression};
+use crate::ast2::{statement, statement::Statement};
+use crate::ast2::{node, node::Node, node::Html};
+use crate::ast2::functions::FunctionValue;
+use crate::parser::{parse_string, parse_multiline_string};
 
 grammar;
 
@@ -38,11 +38,11 @@ KeyValueNil = "nil";
 KeyTypeString = "str";
 KeyTypeNumber = "num";
 KeyTypeFloat = "float";
-KeyTypeBool = "bool";
-KeyTypeElement = "element";
+KeyTypeBoolean = "bool";
+KeyTypeHtml = "html";
 KeyTypeFunction = "func";
 KeyTypeMap = "map";
-KeyTypeArray = "list";
+KeyTypeList = "list";
 
 Keyword = {
   KeyIf,
@@ -62,11 +62,11 @@ Keyword = {
   KeyTypeString,
   KeyTypeNumber,
   KeyTypeFloat,
-  KeyTypeBool,
-  KeyTypeElement,
+  KeyTypeBoolean,
+  KeyTypeHtml,
   KeyTypeFunction,
   KeyTypeMap,
-  KeyTypeArray,
+  KeyTypeList,
 };
 
 KeyVariableName = {
@@ -79,21 +79,21 @@ KeyVariableName = {
 TypeString: Type = KeyTypeString => Type::String;
 TypeNumber: Type = KeyTypeNumber => Type::Number;
 TypeFloat: Type = KeyTypeFloat => Type::Float;
-TypeBool: Type = KeyTypeBool => Type::Bool;
-TypeElement: Type = KeyTypeElement => Type::Element;
+TypeBoolean: Type = KeyTypeBoolean => Type::Boolean;
+TypeHtml: Type = KeyTypeHtml => Type::Html;
 TypeFunction: Type = KeyTypeFunction => Type::Function;
 TypeMap: Type = KeyTypeMap => Type::Map;
-TypeArray: Type = KeyTypeArray => Type::Array;
+TypeList: Type = KeyTypeList => Type::List;
 
 Type: Type = {
   TypeString,
   TypeNumber,
   TypeFloat,
-  TypeBool,
-  TypeElement,
+  TypeBoolean,
+  TypeHtml,
   TypeFunction,
   TypeMap,
-  TypeArray,
+  TypeList,
 };
 
 // Operations
@@ -153,7 +153,7 @@ RawValueString: String = {
 };
 RawValueNumber: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
 RawValueFloat: f64 = <s:r"[0-9]+\.[0-9]+"> => f64::from_str(s).unwrap();
-RawValueBool: bool = {
+RawValueBoolean: bool = {
   KeyValueTrue => true,
   KeyValueFalse => false,
 };
@@ -161,19 +161,19 @@ RawValueBool: bool = {
 ValueString: Value = <s:RawValueString> => Value::String(s);
 ValueNumber: Value = <n:RawValueNumber> => Value::Number(n);
 ValueFloat: Value = <f:RawValueFloat> => Value::Float(f);
-ValueBool: Value = <b:RawValueBool> => Value::Bool(b);
+ValueBoolean: Value = <b:RawValueBoolean> => Value::Boolean(b);
 ValueNil: Value = KeyValueNil => Value::Nil;
-ValueFunction: Value = <function:Function> => Value::Function(default_function, function.0.into(), function.1, function.2.into());
-ValueElement: Value = ":" <element:NodeElement> => Value::Element(element.into());
+ValueFunction: Value = <function:Function> => Value::Function((default_function, function.0.into(), function.1, function.2.into()));
+ValueHtml: Value = ":" <html:NodeHtml> => Value::Html(html);
 
 Value: Value = {
   ValueString,
   ValueNumber,
   ValueFloat,
-  ValueBool,
+  ValueBoolean,
   ValueNil,
   ValueFunction,
-  ValueElement,
+  ValueHtml,
 };
 
 
@@ -212,18 +212,18 @@ ExpressionTerm: Expression = {
   "(" <Expression> ")",
   ExpressionValue,
   ExpressionMap,
-  ExpressionArray,
+  ExpressionList,
   ExpressionIdentifier,
   ExpressionScript,
 };
 
 ExpressionValue: Expression = <value:Value> => expression::value(value);
 ExpressionMap: Expression = "{" <definitions:Definition*> "}" => expression::map(definitions);
-ExpressionArray: Expression = "[" <mut entries:(<Expression> ",")*> <last:Expression?> "]" => {
+ExpressionList: Expression = "[" <mut entries:(<Expression> ",")*> <last:Expression?> "]" => {
   if let Some(last) = last {
     entries.push(last);
   }
-  expression::array(entries)
+  expression::list(entries)
 };
 ExpressionScopeEntry: Expression = <scope:Expression> "[" <entry:Expression> "]" => expression::scope_entry(scope.into(), entry.into());
 ExpressionIdentifier: Expression = <location:KeyVariableName> <subsequent:("." <KeyVariableName>)*> => expression::identifier({
@@ -279,10 +279,10 @@ Statement: Statement = {
 
 // html
 
-NodeElement: Node = {
-  <identifier:KeyVariableName> <attributes:NodeAttribute*> "{" <children:Node*> "}" => node::element(identifier.into(), attributes, children),
-  <identifier:KeyVariableName> <attributes:NodeAttribute*> ">" <child:Node> => node::element(identifier.into(), attributes, vec![child]),
-  <identifier:KeyVariableName> <attributes:NodeAttribute*> ";" => node::element(identifier.into(), attributes, vec![]),
+NodeHtml: Node = {
+  <identifier:KeyVariableName> <attributes:NodeAttribute*> "{" <children:Node*> "}" => node::html(Html::new(identifier.into()).with_attributes(attributes).with_children(children)),
+  <identifier:KeyVariableName> <attributes:NodeAttribute*> ">" <child:Node> => node::html(Html::new(identifier.into()).with_attributes(attributes).with_children(vec![child])),
+  <identifier:KeyVariableName> <attributes:NodeAttribute*> ";" => node::html(Html::new(identifier.into()).with_attributes(attributes)),
 };
 
 NodeAttribute: (String, Vec<Node>) = {
@@ -295,14 +295,14 @@ NodeAttribute: (String, Vec<Node>) = {
 
 NodeText: Node = <string:RawValueString> => node::text(string);
 
-NodeInsert: Node = "@" "{" <expression:Expression> "}" => node::insert(expression.into());
+NodeInsert: Node = "@" "(" <expression:Expression> "}" => node::insertion(expression.into());
 
 Node: Node = {
   <for_loop:StatementFor> => node::logic_statement(for_loop),
   <iter_loop:StatementIter> => node::logic_statement(iter_loop),
   <if_statement:StatementIf> => node::logic_statement(if_statement),
   
-  NodeElement,
+  NodeHtml,
   NodeInsert,
   NodeText,
 }

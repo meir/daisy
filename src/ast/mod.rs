@@ -5,4 +5,3 @@ pub mod function;
 pub mod html;
 pub mod node;
 pub mod statement;
-pub mod strings;
