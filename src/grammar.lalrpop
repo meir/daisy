@@ -224,7 +224,7 @@ ExpressionList: Expression = "[" <mut entries:(<Expression> ",")*> <last:Express
   }
   expression::list(entries)
 };
-ExpressionScopeEntry: Expression = <scope:Expression> "[" <entry:Expression> "]" => expression::scope_entry(scope.into(), entry.into());
+ExpressionScopeEntry: Expression = <scope:Expression> "[" <entry:Expression> "]" => expression::object_entry(scope.into(), entry.into());
 ExpressionIdentifier: Expression = <location:KeyVariableName> <subsequent:("." <KeyVariableName>)*> => expression::identifier({
   let mut location = vec![location.to_string()];
   location.append(&mut subsequent.iter().map(|s| s.to_string()).collect());
@@ -242,19 +242,19 @@ ExpressionScript: Expression = "$"<script:r#"`([^`\\]|\\.)*`"#> => expression::s
 // statements
 
 StatementCollect: Statement = (KeyCollect) <expression:Expression> => statement::collect(expression.into());
-StatementBreak: Statement = KeyBreak => statement::break_statement();
-StatementContinue: Statement = KeyContinue => statement::continue_statement();
+StatementBreak: Statement = KeyBreak => statement::break_s();
+StatementContinue: Statement = KeyContinue => statement::continue_s();
 StatementReturn: Statement = {
-  (KeyReturn) <expression:Expression> => statement::return_statement(Some(expression)),
-  (KeyReturn) ";" => statement::return_statement(None),
+  (KeyReturn) <expression:Expression> => statement::return_s(Some(expression)),
+  (KeyReturn) ";" => statement::return_s(None),
 };
 
-StatementIf: Statement = (KeyIf) <condition:Expression> "{" <body:Statement*> "}" => statement::if_statement(condition.into(), body);
+StatementIf: Statement = (KeyIf) <condition:Expression> "{" <body:Statement*> "}" => statement::if_s(condition.into(), body);
 StatementIter: Statement = {
-  (KeyFor) <key:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement((key.into(), None), collection, body),
-  (KeyFor) <key:KeyVariableName> "," <value:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter_statement((key.into(), Some(value.into())), collection, body),
+  (KeyFor) <key:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter((key.into(), None), collection, body),
+  (KeyFor) <key:KeyVariableName> "," <value:KeyVariableName> "in" <collection:Expression> "{" <body:Statement*> "}" => statement::iter((key.into(), Some(value.into())), collection, body),
 };
-StatementFor: Statement = (KeyFor) <init:StatementDefinition> ";" <condition:Expression> ";" <increment:StatementAssign> "{" <body:Statement*> "}" => statement::for_statement(init, condition, increment, body);
+StatementFor: Statement = (KeyFor) <init:StatementDefinition> ";" <condition:Expression> ";" <increment:StatementAssign> "{" <body:Statement*> "}" => statement::for_s(init, condition, increment, body);
 StatementDefinition: Statement = <definition:Definition> => statement::define(definition.0, definition.1, definition.2);
 StatementAssign: Statement = <identifier:KeyVariableName> "=" <expression:Expression> => statement::assign(identifier.into(), expression.into());
 StatementCall: Statement = <function:ExpressionIdentifier> "(" <mut arguments:(<Expression> ",")*> <last_argument:Expression?> ")" => {
@@ -299,7 +299,7 @@ NodeInsert: Node = "@" "(" <expression:Expression> "}" => node::insertion(expres
 Node: Node = {
   <for_loop:StatementFor> => node::logic_statement(for_loop),
   <iter_loop:StatementIter> => node::logic_statement(iter_loop),
-  <if_statement:StatementIf> => node::logic_statement(if_statement),
+  <if_s:StatementIf> => node::logic_statement(if_s),
   
   NodeHtml,
   NodeInsert,

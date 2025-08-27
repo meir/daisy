@@ -26,6 +26,7 @@ impl CheckTypeValue for TypeValue {
     }
 }
 
+// #[derive(Clone)]
 pub enum Value {
     String(String),
     Number(i64),

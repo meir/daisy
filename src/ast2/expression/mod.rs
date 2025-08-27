@@ -17,5 +17,12 @@ inherits!(
     ]
 );
 inherits!(calculus, [add, subtract, multiply, divide]);
+inherit!(call);
+inherit!(identifier);
+inherit!(list);
+inherit!(map);
+inherit!(value);
+inherit!(script);
+inherit!(object_entry);
 
 pub type Expression = Box<dyn Fn(&Context, &Environment) -> Value + 'static>;
