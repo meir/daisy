@@ -1,26 +1,22 @@
-mod scope;
-mod stack;
-mod r#type;
-mod value;
-
+use super::Build;
+use crate::context::Context;
+use crate::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub use r#type::Type;
+inherits!(r#type, [Type]);
+inherits!(value, [Value, TypeValue, CheckTypeValue]);
+
+mod scope;
 use scope::QueryScopes;
 use scope::Scope;
 use scope::ScopeList;
 use scope::UseScope;
+
+mod stack;
 use stack::Stack;
 use stack::UseStack;
-pub use value::CheckTypeValue;
-pub use value::TypeValue;
-pub use value::Value;
-
-use crate::context::Context;
-
-use super::Build;
 
 #[derive(Clone)]
 pub struct Environment {
@@ -59,6 +55,16 @@ impl Environment {
         }
     }
 
+    pub fn subscope<T, F>(&mut self, lambda: F) -> T
+    where
+        F: FnOnce() -> T,
+    {
+        self.increase_scope();
+        let result: T = lambda();
+        self.decrease_scope();
+        result
+    }
+
     pub fn clean(&mut self) {
         let in_use: Vec<usize> = self
             .scopes
@@ -76,6 +82,15 @@ impl Environment {
     }
 
     pub fn set(&mut self, name: &str, value: TypeValue) {
+        let index = self.scopes.exists(name);
+        if let Some(index) = index {
+            self.stack.set(index, value);
+        } else {
+            self.define(name, value);
+        }
+    }
+
+    pub fn assign(&mut self, name: &str, value: TypeValue) {
         let index = self.scopes.exists(name).expect(&format!(
             "Variable '{}' not defined in current scope.",
             name

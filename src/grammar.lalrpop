@@ -3,7 +3,6 @@ use crate::ast2::environment::{Type, Value};
 use crate::ast2::{expression, expression::Expression};
 use crate::ast2::{statement, statement::Statement};
 use crate::ast2::{node, node::Node, node::Html};
-use crate::ast2::functions::FunctionValue;
 use crate::parser::{parse_string, parse_multiline_string};
 
 grammar;
@@ -102,10 +101,10 @@ OpEqual = "==";
 OpNotEqual = "!=";
 OpOr = "||";
 OpAnd = "&&";
-OpLessThan = "<";
-OpLessThanOrEqual = "<=";
-OpGreaterThan = ">";
-OpGreaterThanOrEqual = ">=";
+OpLesser = "<";
+OpLesserEqual = "<=";
+OpGreater = ">";
+OpGreaterEqual = ">=";
 
 OpAdd = "+";
 OpSubtract = "-";
@@ -163,7 +162,7 @@ ValueNumber: Value = <n:RawValueNumber> => Value::Number(n);
 ValueFloat: Value = <f:RawValueFloat> => Value::Float(f);
 ValueBoolean: Value = <b:RawValueBoolean> => Value::Boolean(b);
 ValueNil: Value = KeyValueNil => Value::Nil;
-ValueFunction: Value = <function:Function> => Value::Function((default_function, function.0.into(), function.1, function.2.into()));
+ValueFunction: Value = <function:Function> => Value::Function(Box::new((function.0.into(), function.1, function.2.into())));
 ValueHtml: Value = ":" <html:NodeHtml> => Value::Html(html);
 
 Value: Value = {
@@ -184,10 +183,10 @@ Expression: Expression = {
   <left:Expression> (OpNotEqual) <right:ExpressionCalculus> => expression::notequal(left.into(), right.into()),
   <left:Expression> (OpOr) <right:ExpressionCalculus> => expression::or(left.into(), right.into()),
   <left:Expression> (OpAnd) <right:ExpressionCalculus> => expression::and(left.into(), right.into()),
-  <left:Expression> (OpLessThan) <right:ExpressionCalculus> => expression::lessthan(left.into(), right.into()),
-  <left:Expression> (OpLessThanOrEqual) <right:ExpressionCalculus> => expression::lessthanorequal(left.into(), right.into()),
-  <left:Expression> (OpGreaterThan) <right:ExpressionCalculus> => expression::greaterthan(left.into(), right.into()),
-  <left:Expression> (OpGreaterThanOrEqual) <right:ExpressionCalculus> => expression::greaterthanorequal(left.into(), right.into()),
+  <left:Expression> (OpLesser) <right:ExpressionCalculus> => expression::lesser(left.into(), right.into()),
+  <left:Expression> (OpLesserEqual) <right:ExpressionCalculus> => expression::lesser_equal(left.into(), right.into()),
+  <left:Expression> (OpGreater) <right:ExpressionCalculus> => expression::greater(left.into(), right.into()),
+  <left:Expression> (OpGreaterEqual) <right:ExpressionCalculus> => expression::greater_equal(left.into(), right.into()),
 
   ExpressionCall,
   ExpressionScopeEntry,
@@ -195,15 +194,15 @@ Expression: Expression = {
 };
 
 ExpressionCalculus: Expression = {
-  <left:ExpressionCalculus> (OpAdd) <right:ExpressionFactor> => expression::addition(left.into(), right.into()),
-  <left:ExpressionCalculus> (OpSubtract) <right:ExpressionFactor> => expression::subtraction(left.into(), right.into()),
+  <left:ExpressionCalculus> (OpAdd) <right:ExpressionFactor> => expression::add(left, right),
+  <left:ExpressionCalculus> (OpSubtract) <right:ExpressionFactor> => expression::subtract(left, right),
 
   ExpressionFactor,
 };
 
 ExpressionFactor: Expression = {
-  <left:ExpressionFactor> (OpMultiply) <right:ExpressionTerm> => expression::multiplication(left.into(), right.into()),
-  <left:ExpressionFactor> (OpDivide) <right:ExpressionTerm> => expression::division(left.into(), right.into()),
+  <left:ExpressionFactor> (OpMultiply) <right:ExpressionTerm> => expression::multiply(left, right),
+  <left:ExpressionFactor> (OpDivide) <right:ExpressionTerm> => expression::divide(left, right),
 
   ExpressionTerm,
 };

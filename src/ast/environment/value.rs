@@ -19,7 +19,6 @@ macro_rules! impl_try_into {
     }
 }
 
-#[derive(Clone)]
 pub enum Value {
     String(String),
     Number(i64),

@@ -54,7 +54,12 @@ impl Html {
                     .map(|node| node(ctx, env))
                     .collect::<Vec<String>>()
                     .join(" ");
-                format!("{}=\"{}\"", k, value)
+
+                if value.is_empty() {
+                    k.to_string()
+                } else {
+                    format!(r#"{}="{}""#, k, value)
+                }
             })
             .collect::<Vec<String>>()
             .join(" ");
