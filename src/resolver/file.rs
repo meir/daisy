@@ -21,12 +21,13 @@ pub struct File {
 }
 
 impl File {
-    pub fn load_absolute<P: AsRef<Path>>(ctx: &mut Context, src: P) -> File {
+    pub fn load_absolute<P: AsRef<Path>>(ctx: &Context, src: P) -> File {
         let content = fs::read_to_string(&src).unwrap_or_else(|_| {
             panic!("Failed to read file: {:?}", src.as_ref());
         });
         let ast = ctx
             .parser
+            .borrow()
             .parse(content.as_str())
             .unwrap_or_else(|err| Self::error_message(src.as_ref(), err, &content));
 
