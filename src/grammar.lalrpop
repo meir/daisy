@@ -71,6 +71,7 @@ Keyword = {
 KeyVariableName = {
   KeyIdentifier,
   KeyMeta,
+  KeyTypeHtml,
 }
 
 // types
@@ -163,7 +164,7 @@ ValueFloat: Value = <f:RawValueFloat> => Value::Float(f);
 ValueBoolean: Value = <b:RawValueBoolean> => Value::Boolean(b);
 ValueNil: Value = KeyValueNil => Value::Nil;
 ValueFunction: Value = <function:Function> => Value::Function(Box::new((function.0.into(), function.1, function.2.into())));
-ValueHtml: Value = ":" <html:NodeHtml> => Value::Html(html);
+ValueHtml: Value = <html:NodeHtml> => Value::Html(html);
 
 Value: Value = {
   ValueString,
@@ -279,6 +280,10 @@ Statement: Statement = {
 // html
 
 NodeHtml: Node = {
+  ":" <node_body:NodeBody> => node_body,
+};
+
+NodeBody: Node = {
   <identifier:KeyVariableName> <attributes:NodeAttribute*> "{" <children:Node*> "}" => node::html(Html::new(identifier.into()).with_attributes(attributes).with_children(children)),
   <identifier:KeyVariableName> <attributes:NodeAttribute*> ">" <child:Node> => node::html(Html::new(identifier.into()).with_attributes(attributes).with_children(vec![child])),
   <identifier:KeyVariableName> <attributes:NodeAttribute*> ";" => node::html(Html::new(identifier.into()).with_attributes(attributes)),
@@ -294,14 +299,14 @@ NodeAttribute: (String, Vec<Node>) = {
 
 NodeText: Node = <string:RawValueString> => node::text(string);
 
-NodeInsert: Node = "@" "(" <expression:Expression> "}" => node::insertion(expression.into());
+NodeInsert: Node = "@" "{" <expression:Expression> "}" => node::insertion(expression.into());
 
 Node: Node = {
   <for_loop:StatementFor> => node::logic_statement(for_loop),
   <iter_loop:StatementIter> => node::logic_statement(iter_loop),
   <if_s:StatementIf> => node::logic_statement(if_s),
   
-  NodeHtml,
+  NodeBody,
   NodeInsert,
   NodeText,
 }

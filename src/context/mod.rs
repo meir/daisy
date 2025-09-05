@@ -1,20 +1,29 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 mod config;
 use config::Config;
-
+pub mod resource;
+use resource::ResourceList;
+pub mod parser;
+mod resolver;
 use crate::grammar::DaisyParser;
+pub use resolver::load_dir;
 
+mod file;
+
+const EXTENSION: &str = "ds";
+
+#[derive(Clone)]
 pub struct Context {
-    pub parser: DaisyParser,
-    pub resources: Vec<Rc<RefCell<Resource>>>,
+    pub parser: Rc<RefCell<DaisyParser>>,
+    pub resources: ResourceList,
     pub config: Config,
 }
 
 impl Context {
     pub fn new() -> Self {
         Context {
-            parser: DaisyParser::new(),
-            resources: vec![],
+            parser: Rc::new(RefCell::new(DaisyParser::new())),
+            resources: HashMap::new(),
             config: Config::new(),
         }
     }

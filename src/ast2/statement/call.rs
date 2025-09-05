@@ -1,3 +1,5 @@
+use log::warn;
+
 use super::{Result, Statement};
 use crate::ast2::environment::Value;
 use crate::ast2::expression::Expression;
@@ -9,7 +11,7 @@ pub fn call(value: Expression, arguments: Vec<Expression>) -> Statement {
             Value::Function(function) => {
                 function.call(ctx, env, &arguments);
             }
-            _ => panic!("Expected a function, got {}", function),
+            _ => warn!("Expected a function, got {}", function),
         }
 
         Result::NOP

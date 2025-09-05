@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use crate::ast2::statement::Result;
 use crate::ast2::{Build, Expression, Statement};
 
 use super::Node;
 
 pub fn logic_statement(logic: Statement) -> Node {
-    Box::new(move |ctx, env| match logic(ctx, env) {
+    Arc::new(move |ctx, env| match logic(ctx, env) {
         Result::Collect(value) => value
             .iter()
             .map(|v| v.build(ctx, env))
@@ -16,5 +18,5 @@ pub fn logic_statement(logic: Statement) -> Node {
 }
 
 pub fn logic_expression(logic: Expression) -> Node {
-    Box::new(move |ctx, env| logic(ctx, env).build(ctx, env))
+    Arc::new(move |ctx, env| logic(ctx, env).build(ctx, env))
 }

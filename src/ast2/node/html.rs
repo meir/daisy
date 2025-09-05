@@ -2,9 +2,10 @@ use super::Node;
 use crate::ast2::Environment;
 use crate::context::Context;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub fn html(element: Html) -> Node {
-    Box::new(move |ctx, env| element.build(ctx, env))
+    Arc::new(move |ctx, env| element.build(ctx, env))
 }
 
 pub struct Html {

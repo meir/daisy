@@ -8,7 +8,7 @@ mod paths;
 use assets::Assets;
 use paths::Paths;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(default)]
 pub struct Config {
     pub paths: Paths,

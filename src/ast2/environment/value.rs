@@ -2,10 +2,8 @@ use std::fmt::{Display, Formatter, Result};
 use std::{cell::RefCell, rc::Rc};
 
 use crate::ast2::functions::FunctionRunner;
-use crate::{
-    ast2::{Build, Node},
-    context::Context,
-};
+use crate::ast2::Node;
+use crate::{ast2::Build, context::Context};
 
 use super::{Environment, Type};
 
@@ -26,7 +24,7 @@ impl CheckTypeValue for TypeValue {
     }
 }
 
-// #[derive(Clone)]
+#[derive(Clone)]
 pub enum Value {
     String(String),
     Number(i64),

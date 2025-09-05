@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::ast2::environment::Value;
 use crate::ast2::expression::Expression;
 
@@ -24,12 +22,7 @@ pub fn identifier(location: Vec<String>) -> Expression {
         }
 
         if let Some(tv) = current {
-            match Rc::try_unwrap(tv) {
-                Ok(ref_cell) => ref_cell.into_inner().1,
-                Err(_rc) => {
-                    panic!("Identifier value is still referenced elsewhere");
-                }
-            }
+            tv.borrow().1.clone()
         } else {
             Value::Nil
         }

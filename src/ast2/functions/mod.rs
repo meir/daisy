@@ -16,8 +16,27 @@ pub type FunctionValue = (
     FunctionBody,
 );
 
-pub trait FunctionRunner {
+pub trait FunctionRunner: FunctionRunnerClone {
     fn call(&self, ctx: &Context, env: &Environment, inputs: &Vec<Expression>) -> Value;
+}
+
+pub trait FunctionRunnerClone {
+    fn clone_box(&self) -> Box<dyn FunctionRunner>;
+}
+
+impl<T> FunctionRunnerClone for T
+where
+    T: FunctionRunner + Clone + 'static,
+{
+    fn clone_box(&self) -> Box<dyn FunctionRunner> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn FunctionRunner> {
+    fn clone(&self) -> Box<dyn FunctionRunner> {
+        self.as_ref().clone_box()
+    }
 }
 
 impl FunctionRunner for FunctionValue {

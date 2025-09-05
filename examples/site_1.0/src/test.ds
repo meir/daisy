@@ -8,9 +8,9 @@ use("assets/main.scss")
 str line_content = "This is a list item"
 str css = use("assets/main.scss")
 
-element line = : li > @{line_content}
+html line = : li > @{line_content}
 
-element lines = : ul {
+html lines = : ul {
   @{line}
   @{line}
   @{line}
